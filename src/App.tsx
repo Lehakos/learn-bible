@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AchievementsPage } from './pages/AchievementsPage';
 import { CollectionPage } from './pages/CollectionPage';
 import { GamePage } from './pages/GamePage';
@@ -21,7 +21,7 @@ export default function App() {
 
   return (
     <AppProvider>
-      <BrowserRouter>
+      <HashRouter>
         <ThemeToggle theme={theme} onToggle={toggleTheme} />
         <Routes>
           <Route path="/" element={<HomePage />} />
@@ -33,7 +33,7 @@ export default function App() {
           <Route path="/collection" element={<CollectionPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-      </BrowserRouter>
+      </HashRouter>
     </AppProvider>
   );
 }
