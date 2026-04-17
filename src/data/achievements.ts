@@ -124,12 +124,4 @@ export const achievements: Achievement[] = [
     maxProgress: 5,
     iconEmoji: '⬆️',
   },
-  {
-    id: 'all-modes',
-    title: 'Всесторонний',
-    description: 'Разблокируй все игровые режимы',
-    condition: 'unlock_all_modes',
-    maxProgress: 4,
-    iconEmoji: '🎮',
-  },
 ];

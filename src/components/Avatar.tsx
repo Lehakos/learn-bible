@@ -1,11 +1,6 @@
 import { avatarItems } from '../data/avatarItems';
+import { AvatarSize } from '../types/avatar';
 import { AvatarCategory } from '../types';
-
-export enum AvatarSize {
-  SM = 'sm',
-  MD = 'md',
-  LG = 'lg',
-}
 
 interface AvatarProps {
   equippedItems: string[];

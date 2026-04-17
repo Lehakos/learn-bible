@@ -96,6 +96,7 @@ interface AppContextValue extends AppState {
   addXP: (amount: number) => Promise<boolean>; // returns true if leveled up
   unlockAchievement: (id: string) => Promise<void>;
   updateAchievementProgress: (id: string, progress: number) => Promise<void>;
+  markAchievementsAsSeen: () => Promise<void>;
   setVerseStatus: (verseId: string, status: UserVerseStatus['status']) => Promise<void>;
   markVerseCompleted: (verseId: string) => Promise<void>;
   equipItem: (itemId: string) => Promise<void>;
@@ -185,10 +186,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ...current,
       progress: meta.maxProgress,
       unlockedAt: new Date().toISOString(),
+      seenAt: undefined,
     };
     dispatch({ type: 'SET_ACHIEVEMENT', achievement: updated });
     await updateAchievement(updated);
     notifyAchievementUnlocked(meta.title, meta.iconEmoji);
+  }
+
+  async function markAchievementsAsSeen() {
+    const unseen = state.achievements.filter((a) => a.unlockedAt && !a.seenAt);
+    if (unseen.length === 0) return;
+
+    const seenAt = new Date().toISOString();
+    for (const achievement of unseen) {
+      const updated: UserAchievement = {
+        ...achievement,
+        seenAt,
+      };
+      dispatch({ type: 'SET_ACHIEVEMENT', achievement: updated });
+      await updateAchievement(updated);
+    }
   }
 
   async function setVerseStatus(verseId: string, status: UserVerseStatus['status']) {
@@ -251,6 +268,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         addXP,
         unlockAchievement,
         updateAchievementProgress,
+        markAchievementsAsSeen,
         setVerseStatus,
         markVerseCompleted,
         equipItem,

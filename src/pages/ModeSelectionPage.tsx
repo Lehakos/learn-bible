@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { createSession } from '../services/gameService';
 import { useApp } from '../store/AppContext';
-import { Difficulty, GameMode } from '../types';
+import { Difficulty, GameMode, VerseStatus } from '../types';
 
 interface ModeConfig {
   mode: GameMode;
@@ -42,23 +42,41 @@ const MODES: ModeConfig[] = [
 export function ModeSelectionPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { allVerses, loading } = useApp();
+  const { allVerses, verseStatuses, loading } = useApp();
   const [error, setError] = useState<string | null>(null);
+
+  const masteredVerseIds = useMemo(
+    () =>
+      new Set(
+        verseStatuses
+          .filter((status) => status.status === VerseStatus.MASTERED)
+          .map((status) => status.verseId),
+      ),
+    [verseStatuses],
+  );
+  const unmasteredVerses = useMemo(
+    () => allVerses.filter((verse) => !masteredVerseIds.has(verse.id)),
+    [allVerses, masteredVerseIds],
+  );
 
   const repeatVerseId = searchParams.get('verseId');
   const repeatVerse = useMemo(
-    () => allVerses.find((verse) => verse.id === repeatVerseId),
-    [allVerses, repeatVerseId],
+    () => unmasteredVerses.find((verse) => verse.id === repeatVerseId),
+    [unmasteredVerses, repeatVerseId],
   );
 
   async function handleSelect(mode: GameMode) {
     const difficulty: Difficulty = Difficulty.EASY;
     setError(null);
     try {
-      await createSession(mode, difficulty, allVerses, repeatVerse?.id);
+      await createSession(mode, difficulty, unmasteredVerses, repeatVerse?.id);
       navigate('/game');
-    } catch {
-      setError('Сначала добавь хотя бы один стих в коллекцию.');
+    } catch (err) {
+      if (err instanceof Error && err.message === 'NO_VERSES_AVAILABLE') {
+        setError('Нет невыученных стихов. Отметь нужные стихи как «В изучении» в коллекции.');
+        return;
+      }
+      setError('Не удалось начать игру. Попробуй ещё раз.');
     }
   }
 

@@ -60,9 +60,9 @@ export function clearSession(): void {
 // ── FillGaps helpers ──────────────────────────────────────────────────────────
 
 export interface GapsResult {
-  /** Массив токенов: строка (слово/знак) или null (пропуск) */
+  /** Массив частей текста: строка (слово/разделитель) или null (пропуск слова) */
   tokens: (string | null)[];
-  /** Индексы пропущенных слов (позиции null в tokens) */
+  /** Индексы пропусков (позиции null в tokens) */
   gapIndices: number[];
   /** Правильные слова для пропусков (в порядке появления) */
   answers: string[];
@@ -70,44 +70,92 @@ export interface GapsResult {
   options: string[];
 }
 
-function tokenizeVerse(text: string): string[] {
-  // Разбивает текст на слова (знаки препинания прилеплены к слову)
-  return text.split(/\s+/).filter(Boolean);
+const WORD_PART_RE = /^[\p{L}\p{N}]+$/u;
+const VERSE_PARTS_RE = /[\p{L}\p{N}]+|[^\p{L}\p{N}]+/gu;
+
+function splitVerseParts(text: string): string[] {
+  return text.match(VERSE_PARTS_RE) ?? [];
 }
 
-export function getGapsForVerse(verse: BibleVerse, difficulty: Difficulty): GapsResult {
-  const words = tokenizeVerse(verse.text);
+function isWordPart(part: string): boolean {
+  return WORD_PART_RE.test(part);
+}
+
+function tokenizeVerse(text: string): string[] {
+  return splitVerseParts(text).filter(isWordPart);
+}
+
+export function normalizeWord(word: string): string {
+  return word.trim().toLocaleLowerCase('ru');
+}
+
+export function getVerseWords(verse: BibleVerse): string[] {
+  return tokenizeVerse(verse.text);
+}
+
+export function getGapsForVerse(
+  verse: BibleVerse,
+  difficulty: Difficulty,
+  allVerses: BibleVerse[] = defaultVerses,
+): GapsResult {
+  const parts = splitVerseParts(verse.text);
+  const words = parts.filter(isWordPart);
   const gapCount =
     difficulty === Difficulty.EASY ? 2 : difficulty === Difficulty.MEDIUM ? 3 : 4;
 
-  // Выбираем случайные позиции под пропуски (не первое и не последнее слово)
-  const eligible = words.map((_, i) => i).filter((i) => i > 0 && i < words.length - 1);
-  const gapPositions = shuffleArray(eligible).slice(0, Math.min(gapCount, eligible.length));
-  gapPositions.sort((a, b) => a - b);
-
-  const tokens: (string | null)[] = words.map((w, i) =>
-    gapPositions.includes(i) ? null : w,
+  // Выбираем случайные позиции под пропуски (среди слов; не первое и не последнее слово)
+  const eligibleWordPositions = words
+    .map((_, i) => i)
+    .filter((i) => i > 0 && i < words.length - 1);
+  const gapWordPositions = shuffleArray(eligibleWordPositions).slice(
+    0,
+    Math.min(gapCount, eligibleWordPositions.length),
   );
-  const answers = gapPositions.map((i) => words[i]);
+  gapWordPositions.sort((a, b) => a - b);
+  const gapWordPositionSet = new Set(gapWordPositions);
 
-  // Варианты: правильные + случайные слова из других стихов
+  const tokens: (string | null)[] = [];
+  const gapIndices: number[] = [];
+  const answers: string[] = [];
+  let wordPosition = 0;
+
+  for (const part of parts) {
+    if (!isWordPart(part)) {
+      tokens.push(part);
+      continue;
+    }
+
+    if (gapWordPositionSet.has(wordPosition)) {
+      gapIndices.push(tokens.length);
+      answers.push(part);
+      tokens.push(null);
+    } else {
+      tokens.push(part);
+    }
+    wordPosition += 1;
+  }
+
+  // Варианты: правильные + отвлекающие слова из других стихов
+  const desiredOptionCount = Math.max(6, answers.length + 4);
+  const sourceVerses = allVerses.length > 0 ? allVerses : defaultVerses;
   const distractors = shuffleArray(
-    defaultVerses
-      .filter((v) => v.id !== verse.id)
-      .flatMap((v) => tokenizeVerse(v.text))
-      .filter((w) => !answers.includes(w)),
-  ).slice(0, 6);
+    [...new Set(
+      sourceVerses
+        .filter((v) => v.id !== verse.id)
+        .flatMap((v) => tokenizeVerse(v.text))
+        .filter((w) => !answers.includes(w)),
+    )],
+  ).slice(0, desiredOptionCount);
+
+  // Если других стихов мало, добираем слова из текущего, чтобы не остаться без вариантов.
   const fallback = shuffleArray(
     tokenizeVerse(verse.text).filter((w) => !answers.includes(w)),
   );
   const options = shuffleArray(
-    [...new Set([...answers, ...distractors, ...fallback])].slice(
-      0,
-      Math.max(6, answers.length + 4),
-    ),
+    [...new Set([...answers, ...distractors, ...fallback])].slice(0, desiredOptionCount),
   );
 
-  return { tokens, gapIndices: gapPositions, answers, options };
+  return { tokens, gapIndices, answers, options };
 }
 
 // ── FindText helpers ──────────────────────────────────────────────────────────
@@ -126,8 +174,12 @@ export function getShuffledWords(verse: BibleVerse): string[] {
 
 // ── IdentifyRef helpers ───────────────────────────────────────────────────────
 
-export function getBookOptions(_allVerses: BibleVerse[]): string[] {
-  return BIBLE_BOOKS_RU;
+export function getBookOptions(allVerses: BibleVerse[]): string[] {
+  const customBooks = [...new Set(allVerses.map((verse) => verse.book.trim()).filter(Boolean))]
+    .filter((book) => !BIBLE_BOOKS_RU.includes(book))
+    .sort((a, b) => a.localeCompare(b, 'ru'));
+
+  return [...BIBLE_BOOKS_RU, ...customBooks];
 }
 
 // ── Scoring ───────────────────────────────────────────────────────────────────

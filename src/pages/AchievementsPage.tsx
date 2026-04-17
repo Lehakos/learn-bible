@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AchievementCard } from '../components/AchievementCard';
 import { BottomNav } from '../components/BottomNav';
@@ -13,8 +13,14 @@ enum AchievementFilter {
 
 export function AchievementsPage() {
   const navigate = useNavigate();
-  const { loading, profile, achievements } = useApp();
+  const { loading, profile, achievements, markAchievementsAsSeen } = useApp();
   const [filter, setFilter] = useState<AchievementFilter>(AchievementFilter.ALL);
+
+  useEffect(() => {
+    if (loading) return;
+    if (!achievements.some((a) => a.unlockedAt && !a.seenAt)) return;
+    void markAchievementsAsSeen();
+  }, [achievements, loading, markAchievementsAsSeen]);
 
   const visibleAchievements = useMemo(() => {
     if (filter === AchievementFilter.COMPLETED) {

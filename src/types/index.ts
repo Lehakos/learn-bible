@@ -47,6 +47,7 @@ export interface UserAchievement {
   achievementId: string;
   progress: number;
   unlockedAt?: string;
+  seenAt?: string;
 }
 
 export enum AvatarCategory {

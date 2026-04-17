@@ -11,7 +11,7 @@ import { VerseStatus, type GameResult } from '../types';
 
 export function SessionResultPage() {
   const navigate = useNavigate();
-  const { profile, achievements, verseStatuses, addXP, unlockAchievement, updateAchievementProgress, markVerseCompleted } = useApp();
+  const { profile, achievements, verseStatuses, addXP, unlockAchievement, updateAchievementProgress } = useApp();
 
   const [result] = useState<GameResult | null>(() => {
     const raw = sessionStorage.getItem('lastGameResult');
@@ -30,21 +30,11 @@ export function SessionResultPage() {
     async function applyResult() {
       if (!result || !profile) return;
 
-      // 1. Mark verses as completed
-      if (result.verseIds) {
-        for (const id of result.verseIds) {
-          await markVerseCompleted(id);
-        }
-      }
-
-      // 2. Compute total mastered verses (optimistic: current + new from this session)
+      // 1. Compute total mastered verses (handled manually by user in Collection)
       const currentMastered = verseStatuses.filter((s) => s.status === VerseStatus.MASTERED).length;
-      const newMastered = result.verseIds
-        ? result.verseIds.filter((id) => !verseStatuses.find((s) => s.verseId === id && s.status === VerseStatus.MASTERED)).length
-        : 0;
-      const totalMastered = currentMastered + newMastered;
+      const totalMastered = currentMastered;
 
-      // 3. Check achievements
+      // 2. Check achievements
       const updates = checkAchievements(profile, result, achievements, totalMastered);
       const newIds: string[] = [];
       for (const upd of updates) {
@@ -57,14 +47,14 @@ export function SessionResultPage() {
       }
       setNewlyUnlockedIds(newIds);
 
-      // 4. Add XP and detect level-up
+      // 3. Add XP and detect level-up
       const didLevelUp = await addXP(result.xpEarned);
       if (didLevelUp) {
         setNewLevel(profile.level + 1);
         setShowLevelUp(true);
       }
 
-      // 5. Clean up stored result
+      // 4. Clean up stored result
       sessionStorage.removeItem('lastGameResult');
     }
 

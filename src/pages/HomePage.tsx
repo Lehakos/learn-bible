@@ -1,9 +1,10 @@
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../store/AppContext';
-import { Avatar, AvatarSize } from '../components/Avatar';
+import { Avatar } from '../components/Avatar';
 import { XPBar } from '../components/XPBar';
 import { BottomNav } from '../components/BottomNav';
 import { Button } from '../components/ui/button';
+import { AvatarSize } from '../types/avatar';
 
 export function HomePage() {
   const navigate = useNavigate();

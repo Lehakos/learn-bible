@@ -1,13 +1,19 @@
 import { useState, useMemo } from 'react';
 import { Button } from '../ui/button';
-import { getGapsForVerse, calculateXP } from '../../services/gameService';
+import { getGapsForVerse, calculateXP, normalizeWord } from '../../services/gameService';
 import { Difficulty, type BibleVerse } from '../../types';
 
 interface Props {
   verse: BibleVerse;
+  allVerses: BibleVerse[];
   difficulty: Difficulty;
   streak: number;
-  onAnswer: (isCorrect: boolean, xpEarned: number) => void;
+  onAnswer: (
+    isCorrect: boolean,
+    xpEarned: number,
+    options?: { manualNextOnWrong?: boolean },
+  ) => void;
+  onContinueAfterWrong: () => void;
 }
 
 enum AnswerState {
@@ -16,8 +22,18 @@ enum AnswerState {
   WRONG = 'wrong',
 }
 
-export function FillGapsMode({ verse, difficulty, streak, onAnswer }: Props) {
-  const gapsData = useMemo(() => getGapsForVerse(verse, difficulty), [verse, difficulty]);
+export function FillGapsMode({
+  verse,
+  allVerses,
+  difficulty,
+  streak,
+  onAnswer,
+  onContinueAfterWrong,
+}: Props) {
+  const gapsData = useMemo(
+    () => getGapsForVerse(verse, difficulty, allVerses),
+    [verse, difficulty, allVerses],
+  );
 
   // Для easy/medium — кнопки; для hard — ввод
   const isInputMode = difficulty === Difficulty.HARD;
@@ -66,13 +82,13 @@ export function FillGapsMode({ verse, difficulty, streak, onAnswer }: Props) {
 
   function checkAnswers(userAnswers: (string | null)[]) {
     const correct = gapsData.answers.every((ans, i) => {
-      const user = (userAnswers[i] ?? '').trim().toLowerCase();
-      return user === ans.toLowerCase();
+      const user = normalizeWord(userAnswers[i] ?? '');
+      return user === normalizeWord(ans);
     });
 
     setAnswerState(correct ? AnswerState.CORRECT : AnswerState.WRONG);
     const xp = calculateXP(correct, streak);
-    onAnswer(correct, xp);
+    onAnswer(correct, xp, { manualNextOnWrong: true });
   }
 
   // Строим отображение текста
@@ -80,7 +96,7 @@ export function FillGapsMode({ verse, difficulty, streak, onAnswer }: Props) {
   const textParts = gapsData.tokens.map((token, idx) => {
     if (token !== null) {
       return (
-        <span key={idx} className="mr-1">
+        <span key={idx}>
           {token}
         </span>
       );
@@ -97,7 +113,7 @@ export function FillGapsMode({ verse, difficulty, streak, onAnswer }: Props) {
           value={inputValues[gapIdx]}
           onChange={(e) => handleInputChange(gapIdx, e.target.value)}
           disabled={answerState !== AnswerState.IDLE}
-          className={`mr-1 inline-block w-24 rounded border-b-2 border-dashed bg-transparent text-center text-sm outline-none transition-colors ${
+          className={`inline-block w-24 max-w-full rounded border-b-2 border-dashed bg-transparent text-center text-sm align-baseline outline-none transition-colors ${
             answerState === AnswerState.CORRECT
               ? 'border-green-500 text-green-700'
               : answerState === AnswerState.WRONG
@@ -111,8 +127,8 @@ export function FillGapsMode({ verse, difficulty, streak, onAnswer }: Props) {
     return (
       <button
         key={idx}
-        onClick={() => filledWord && handleFilledClick(gapIdx)}
-        className={`mr-1 inline-block min-w-16 rounded px-2 py-0.5 text-sm font-medium transition-colors ${
+        onClick={() => filledWord !== null && handleFilledClick(gapIdx)}
+        className={`inline-flex min-w-16 max-w-full items-center justify-center rounded px-2 py-0.5 text-sm font-medium align-baseline transition-colors ${
           filledWord === null
             ? 'border-2 border-dashed border-slate-300 text-transparent'
             : answerState === AnswerState.CORRECT
@@ -133,15 +149,18 @@ export function FillGapsMode({ verse, difficulty, streak, onAnswer }: Props) {
         <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
           {verse.book} {verse.chapter}:{verse.verse}
         </p>
-        <div className="rounded-xl bg-white p-4 text-base leading-8 text-slate-800 shadow-sm">
+        <div className="rounded-xl bg-white p-4 text-base leading-8 text-slate-800 whitespace-pre-wrap shadow-sm">
           {textParts}
         </div>
       </div>
 
       {answerState === AnswerState.WRONG && (
-        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
-          Правильно: {gapsData.answers.join(', ')}
-        </p>
+        <div className="space-y-3">
+          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+            Правильно: {gapsData.answers.join(', ')}
+          </p>
+          <Button onClick={onContinueAfterWrong}>Дальше</Button>
+        </div>
       )}
 
       {!isInputMode ? (

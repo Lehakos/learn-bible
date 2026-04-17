@@ -1,4 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom';
+import { achievements as allAchievements } from '../data/achievements';
 import { useApp } from '../store/AppContext';
 
 interface NavItem {
@@ -12,8 +13,11 @@ export function BottomNav() {
   const navigate = useNavigate();
   const location = useLocation();
   const { achievements } = useApp();
+  const activeAchievementIds = new Set(allAchievements.map((a) => a.id));
 
-  const newAchievements = achievements.filter((a) => !!a.unlockedAt).length;
+  const newAchievements = achievements.filter(
+    (a) => activeAchievementIds.has(a.achievementId) && !!a.unlockedAt && !a.seenAt,
+  ).length;
 
   const items: NavItem[] = [
     { path: '/', label: 'Главная', emoji: '🏠' },

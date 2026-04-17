@@ -1,12 +1,17 @@
 import { useState, useMemo } from 'react';
 import { Button } from '../ui/button';
-import { getShuffledWords, calculateXP } from '../../services/gameService';
+import { getShuffledWords, getVerseWords, calculateXP, normalizeWord } from '../../services/gameService';
 import type { BibleVerse } from '../../types';
 
 interface Props {
   verse: BibleVerse;
   streak: number;
-  onAnswer: (isCorrect: boolean, xpEarned: number) => void;
+  onAnswer: (
+    isCorrect: boolean,
+    xpEarned: number,
+    options?: { manualNextOnWrong?: boolean },
+  ) => void;
+  onContinueAfterWrong: () => void;
 }
 
 enum AnswerState {
@@ -15,12 +20,14 @@ enum AnswerState {
   WRONG = 'wrong',
 }
 
-export function BuildVerseMode({ verse, streak, onAnswer }: Props) {
+export function BuildVerseMode({
+  verse,
+  streak,
+  onAnswer,
+  onContinueAfterWrong,
+}: Props) {
   const shuffled = useMemo(() => getShuffledWords(verse), [verse]);
-  const correctWords = useMemo(
-    () => verse.text.split(/\s+/).filter(Boolean),
-    [verse],
-  );
+  const correctWords = useMemo(() => getVerseWords(verse), [verse]);
 
   // { word, shuffledIdx } чтобы точно отслеживать, какой экземпляр слова использован
   const [built, setBuilt] = useState<{ word: string; shuffledIdx: number }[]>([]);
@@ -35,9 +42,13 @@ export function BuildVerseMode({ verse, streak, onAnswer }: Props) {
     setBuilt(newBuilt);
 
     if (newBuilt.length === shuffled.length) {
-      const isCorrect = newBuilt.every((b, i) => b.word === correctWords[i]);
+      const isCorrect = newBuilt.every(
+        (b, i) => normalizeWord(b.word) === normalizeWord(correctWords[i]),
+      );
       setAnswerState(isCorrect ? AnswerState.CORRECT : AnswerState.WRONG);
-      onAnswer(isCorrect, calculateXP(isCorrect, streak));
+      onAnswer(isCorrect, calculateXP(isCorrect, streak), {
+        manualNextOnWrong: true,
+      });
     }
   }
 
@@ -92,9 +103,12 @@ export function BuildVerseMode({ verse, streak, onAnswer }: Props) {
       </div>
 
       {answerState === AnswerState.WRONG && (
-        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
-          Правильно: {correctWords.join(' ')}
-        </p>
+        <div className="space-y-3">
+          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+            Правильно: {verse.text}
+          </p>
+          <Button onClick={onContinueAfterWrong}>Дальше</Button>
+        </div>
       )}
 
       {/* Перемешанные слова */}

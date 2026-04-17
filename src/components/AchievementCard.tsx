@@ -15,11 +15,14 @@ export function AchievementCard({ achievement, userAchievement }: AchievementCar
   const cardClassName = unlocked
     ? 'border-amber-300 bg-amber-50 dark:border-amber-500/50 dark:bg-amber-500/10'
     : 'border-border bg-card';
+  const iconClassName = unlocked
+    ? 'text-3xl leading-none'
+    : 'text-3xl leading-none grayscale saturate-0 opacity-55';
 
   return (
     <Card className={cardClassName}>
       <CardContent className="flex items-start gap-3 p-4">
-        <span className="text-3xl leading-none">{achievement.iconEmoji}</span>
+        <span className={iconClassName}>{achievement.iconEmoji}</span>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-semibold text-foreground">{achievement.title}</span>

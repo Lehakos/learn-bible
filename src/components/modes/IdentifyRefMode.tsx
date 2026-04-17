@@ -7,7 +7,12 @@ interface Props {
   verse: BibleVerse;
   allVerses: BibleVerse[];
   streak: number;
-  onAnswer: (isCorrect: boolean, xpEarned: number) => void;
+  onAnswer: (
+    isCorrect: boolean,
+    xpEarned: number,
+    options?: { manualNextOnWrong?: boolean },
+  ) => void;
+  onContinueAfterWrong: () => void;
 }
 
 enum FieldState {
@@ -16,7 +21,13 @@ enum FieldState {
   WRONG = 'wrong',
 }
 
-export function IdentifyRefMode({ verse, allVerses, streak, onAnswer }: Props) {
+export function IdentifyRefMode({
+  verse,
+  allVerses,
+  streak,
+  onAnswer,
+  onContinueAfterWrong,
+}: Props) {
   const bookOptions = useMemo(() => getBookOptions(allVerses), [allVerses]);
 
   const [bookInput, setBookInput] = useState('');
@@ -52,7 +63,9 @@ export function IdentifyRefMode({ verse, allVerses, streak, onAnswer }: Props) {
     setSubmitted(true);
 
     const isCorrect = bCorrect && cCorrect && vCorrect;
-    onAnswer(isCorrect, calculateXP(isCorrect, streak));
+    onAnswer(isCorrect, calculateXP(isCorrect, streak), {
+      manualNextOnWrong: true,
+    });
   }
 
   const [bookState, setBookState] = useState<FieldState>(FieldState.IDLE);
@@ -64,21 +77,30 @@ export function IdentifyRefMode({ verse, allVerses, streak, onAnswer }: Props) {
     bookInput.trim() !== '' &&
     chapterInput.trim() !== '' &&
     verseInput.trim() !== '';
+  const isWrongAnswer =
+    submitted &&
+    (bookState === FieldState.WRONG ||
+      chapterState === FieldState.WRONG ||
+      verseState === FieldState.WRONG);
 
   function fieldBorder(state: FieldState) {
-    if (state === FieldState.CORRECT) return 'border-green-500 bg-green-50 text-green-800';
-    if (state === FieldState.WRONG) return 'border-red-400 bg-red-50 text-red-800';
-    return 'border-slate-300 bg-white text-slate-800 focus:border-indigo-500';
+    if (state === FieldState.CORRECT) {
+      return 'border-green-500 bg-green-50 text-green-800 dark:border-emerald-500 dark:bg-emerald-950/35 dark:text-emerald-100';
+    }
+    if (state === FieldState.WRONG) {
+      return 'border-red-400 bg-red-50 text-red-800 dark:border-rose-500 dark:bg-rose-950/35 dark:text-rose-100';
+    }
+    return 'border-input bg-card text-foreground placeholder:text-muted-foreground focus:border-ring';
   }
 
   return (
     <div className="flex flex-col gap-6">
       {/* Текст стиха */}
-      <div className="rounded-xl bg-white p-4 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+      <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Определи ссылку
         </p>
-        <p className="mt-2 text-base leading-relaxed text-slate-800">
+        <p className="mt-2 text-base leading-relaxed text-card-foreground">
           {verse.text}
         </p>
       </div>
@@ -87,7 +109,7 @@ export function IdentifyRefMode({ verse, allVerses, streak, onAnswer }: Props) {
       <div className="flex flex-col gap-4">
         {/* Книга — combobox с поиском */}
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-600">
+          <label className="mb-1 block text-sm font-medium text-muted-foreground">
             Книга
           </label>
           <div className="relative" ref={dropdownRef}>
@@ -105,12 +127,12 @@ export function IdentifyRefMode({ verse, allVerses, streak, onAnswer }: Props) {
               className={`w-full rounded-lg border px-3 py-2 text-sm outline-none transition-colors ${fieldBorder(bookState)}`}
             />
             {showDropdown && filteredBooks.length > 0 && !submitted && (
-              <ul className="absolute z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
+              <ul className="absolute z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-border bg-popover shadow-lg">
                 {filteredBooks.map((book) => (
                   <li
                     key={book}
                     onMouseDown={() => handleBookSelect(book)}
-                    className="cursor-pointer px-3 py-2 text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-800"
+                    className="cursor-pointer px-3 py-2 text-sm text-popover-foreground hover:bg-accent hover:text-accent-foreground"
                   >
                     {book}
                   </li>
@@ -119,14 +141,14 @@ export function IdentifyRefMode({ verse, allVerses, streak, onAnswer }: Props) {
             )}
           </div>
           {bookState === FieldState.WRONG && submitted && (
-            <p className="mt-1 text-xs text-red-600">Правильно: {verse.book}</p>
+            <p className="mt-1 text-xs text-destructive">Правильно: {verse.book}</p>
           )}
         </div>
 
         {/* Глава и стих — числовые инпуты в ряд */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-600">
+            <label className="mb-1 block text-sm font-medium text-muted-foreground">
               Глава
             </label>
             <input
@@ -139,14 +161,14 @@ export function IdentifyRefMode({ verse, allVerses, streak, onAnswer }: Props) {
               className={`w-full rounded-lg border px-3 py-2 text-sm outline-none transition-colors [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${fieldBorder(chapterState)}`}
             />
             {chapterState === FieldState.WRONG && submitted && (
-              <p className="mt-1 text-xs text-red-600">
+              <p className="mt-1 text-xs text-destructive">
                 Правильно: {verse.chapter}
               </p>
             )}
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-600">
+            <label className="mb-1 block text-sm font-medium text-muted-foreground">
               Стих
             </label>
             <input
@@ -159,7 +181,7 @@ export function IdentifyRefMode({ verse, allVerses, streak, onAnswer }: Props) {
               className={`w-full rounded-lg border px-3 py-2 text-sm outline-none transition-colors [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${fieldBorder(verseState)}`}
             />
             {verseState === FieldState.WRONG && submitted && (
-              <p className="mt-1 text-xs text-red-600">
+              <p className="mt-1 text-xs text-destructive">
                 Правильно: {verse.verse}
               </p>
             )}
@@ -167,9 +189,12 @@ export function IdentifyRefMode({ verse, allVerses, streak, onAnswer }: Props) {
         </div>
       </div>
 
-      <Button onClick={handleSubmit} disabled={!canSubmit}>
-        Ответить
-      </Button>
+      {!submitted && (
+        <Button onClick={handleSubmit} disabled={!canSubmit} className="text-white">
+          Ответить
+        </Button>
+      )}
+      {isWrongAnswer && <Button onClick={onContinueAfterWrong}>Дальше</Button>}
     </div>
   );
 }
