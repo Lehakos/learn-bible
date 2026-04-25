@@ -7,6 +7,7 @@ import * as gameService from '../services/gameService';
 import { AppProvider } from '../store/AppContext';
 import { resetAppDb } from '../test/testDb';
 import { Difficulty, VerseStatus, type BibleVerse } from '../types';
+import { CollectionPage } from './CollectionPage';
 import { ModeSelectionPage } from './ModeSelectionPage';
 
 const verseOne: BibleVerse = {
@@ -33,6 +34,7 @@ function renderModeSelection(initialEntry = '/modes') {
       <MemoryRouter initialEntries={[initialEntry]}>
         <Routes>
           <Route path="/modes" element={<ModeSelectionPage />} />
+          <Route path="/collection" element={<CollectionPage />} />
           <Route path="/game" element={<h1>Экран игры</h1>} />
         </Routes>
       </MemoryRouter>
@@ -64,7 +66,7 @@ describe('ModeSelectionPage (integration)', () => {
     expect(sessionStorage.getItem('currentGameSession')).toBeTruthy();
   });
 
-  it('shows a clear message when there are no unmastered verses', async () => {
+  it('opens the add verse form with a hint when there are no unmastered verses', async () => {
     const user = userEvent.setup();
     await addCustomVerse(verseOne);
     await updateVerseStatus({
@@ -78,9 +80,9 @@ describe('ModeSelectionPage (integration)', () => {
     expect(await screen.findByRole('heading', { name: 'Выбери режим' })).toBeInTheDocument();
     await user.click(screen.getByText('Заполни пропуски'));
 
-    expect(
-      await screen.findByText('Нет невыученных стихов. Отметь нужные стихи как «В изучении» в коллекции.'),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Коллекция стихов' })).toBeInTheDocument();
+    expect(screen.getByText('Добавь стих, чтобы выбрать задание и начать игру.')).toBeInTheDocument();
+    expect(screen.getByText('Новый стих')).toBeInTheDocument();
   });
 
   it('shows repeated verse banner when verseId is provided in query params', async () => {

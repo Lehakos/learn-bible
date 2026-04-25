@@ -45,10 +45,10 @@ function ModesPage() {
   );
 }
 
-function renderCollectionPage() {
+function renderCollectionPage(initialEntry = '/collection') {
   return render(
     <AppProvider>
-      <MemoryRouter initialEntries={['/collection']}>
+      <MemoryRouter initialEntries={[initialEntry]}>
         <Routes>
           <Route path="/collection" element={<CollectionPage />} />
           <Route path="/modes" element={<ModesPage />} />
@@ -114,6 +114,15 @@ describe('CollectionPage (integration)', () => {
     expect(await screen.findByText(newVerse.text)).toBeInTheDocument();
     expect(screen.getByText(`${newVerse.book} ${newVerse.chapter}:${newVerse.verse}`)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Добавить стих' })).toBeInTheDocument();
+  });
+
+  it('opens the add verse form and hint from query params', async () => {
+    renderCollectionPage('/collection?add=verse&hint=no-verses');
+
+    expect(await screen.findByRole('heading', { name: 'Коллекция стихов' })).toBeInTheDocument();
+    expect(screen.getByText('Добавь стих, чтобы выбрать задание и начать игру.')).toBeInTheDocument();
+    expect(screen.getByText('Новый стих')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Сохранить стих' })).toBeInTheDocument();
   });
 
   it('opens mode selection with verseId when player clicks repeat', async () => {

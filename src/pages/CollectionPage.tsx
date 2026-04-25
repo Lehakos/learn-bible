@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { BottomNav } from '../components/BottomNav';
 import { VerseCard } from '../components/VerseCard';
 import { Button } from '../components/ui/button';
@@ -30,8 +30,11 @@ const initialForm: FormState = {
   difficulty: Difficulty.EASY,
 };
 
+const noVersesHint = 'Добавь стих, чтобы выбрать задание и начать игру.';
+
 export function CollectionPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { loading, profile, verseStatuses, allVerses, addCustomVerse, setVerseStatus } = useApp();
 
   const [showForm, setShowForm] = useState(false);
@@ -40,6 +43,14 @@ export function CollectionPage() {
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(initialForm);
   const [verseFilter, setVerseFilter] = useState<VerseFilter>(VerseFilter.ALL);
+  const addVerseRequested = searchParams.get('add') === 'verse';
+  const addVerseHint = searchParams.get('hint') === 'no-verses' ? noVersesHint : null;
+
+  useEffect(() => {
+    if (addVerseRequested) {
+      setShowForm(true);
+    }
+  }, [addVerseRequested]);
 
   const statusesByVerseId = useMemo(() => {
     return new Map(verseStatuses.map((status) => [status.verseId, status]));
@@ -89,6 +100,14 @@ export function CollectionPage() {
     );
   }
 
+  function handleToggleForm() {
+    setError(null);
+    if (showForm && (addVerseRequested || addVerseHint)) {
+      navigate('/collection', { replace: true });
+    }
+    setShowForm((prev) => !prev);
+  }
+
   function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
@@ -127,6 +146,9 @@ export function CollectionPage() {
       });
       setForm(initialForm);
       setShowForm(false);
+      if (addVerseRequested || addVerseHint) {
+        navigate('/collection', { replace: true });
+      }
     } catch {
       setError('Не удалось сохранить стих. Попробуй снова.');
     } finally {
@@ -160,10 +182,16 @@ export function CollectionPage() {
                 Добавляй свои стихи и повторяй их в игровых режимах
               </p>
             </div>
-            <Button size="sm" onClick={() => setShowForm((prev) => !prev)}>
+            <Button size="sm" onClick={handleToggleForm}>
               {showForm ? 'Отмена' : 'Добавить стих'}
             </Button>
           </div>
+
+          {addVerseHint && (
+            <div className="rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-sm text-primary">
+              {addVerseHint}
+            </div>
+          )}
 
           {showForm && (
             <Card>

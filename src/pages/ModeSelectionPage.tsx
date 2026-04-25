@@ -68,12 +68,18 @@ export function ModeSelectionPage() {
   async function handleSelect(mode: GameMode) {
     const difficulty: Difficulty = Difficulty.EASY;
     setError(null);
+
+    if (unmasteredVerses.length === 0) {
+      navigate('/collection?add=verse&hint=no-verses');
+      return;
+    }
+
     try {
       await createSession(mode, difficulty, unmasteredVerses, repeatVerse?.id);
       navigate('/game');
     } catch (err) {
       if (err instanceof Error && err.message === 'NO_VERSES_AVAILABLE') {
-        setError('Нет невыученных стихов. Отметь нужные стихи как «В изучении» в коллекции.');
+        navigate('/collection?add=verse&hint=no-verses');
         return;
       }
       setError('Не удалось начать игру. Попробуй ещё раз.');
