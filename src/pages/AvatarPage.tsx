@@ -104,7 +104,7 @@ export function AvatarPage() {
           role="dialog"
           aria-modal="true"
           aria-label={currentAvatar.name}
-          className="fixed inset-0 z-50 flex flex-col bg-background/95 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-[60] flex flex-col bg-background/95 px-4 pb-4 pt-[calc(env(safe-area-inset-top)+1rem)] backdrop-blur-sm"
         >
           <div className="mx-auto flex w-full max-w-4xl items-center justify-between gap-3">
             <div>
