@@ -27,7 +27,13 @@ export function GameHeader({ current, total, streak, sessionXP, onExit }: GameHe
     <header className="sticky top-0 z-30 border-b border-border bg-card/95 px-4 py-2 backdrop-blur-sm">
       <div className="mx-auto max-w-lg">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" className="shrink-0 px-2" onClick={handleExit}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="shrink-0 px-2"
+            onClick={handleExit}
+            aria-label="Выйти из игры"
+          >
             ✕
           </Button>
           <div className="flex-1">

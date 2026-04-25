@@ -175,6 +175,7 @@ export function CollectionPage() {
                   <div className="relative">
                     <input
                       type="text"
+                      aria-label="Книга"
                       value={form.book}
                       onChange={(e) => {
                         updateField('book', e.target.value);
@@ -200,6 +201,7 @@ export function CollectionPage() {
                     )}
                   </div>
                   <select
+                    aria-label="Сложность"
                     value={form.difficulty}
                     onChange={(e) => updateField('difficulty', e.target.value as Difficulty)}
                     className="rounded-md border border-input bg-background px-3 py-2 text-sm"
@@ -213,6 +215,7 @@ export function CollectionPage() {
                   <input
                     type="number"
                     min={1}
+                    aria-label="Глава"
                     value={form.chapter}
                     onChange={(e) => updateField('chapter', e.target.value)}
                     placeholder="Глава"
@@ -221,6 +224,7 @@ export function CollectionPage() {
                   <input
                     type="number"
                     min={1}
+                    aria-label="Стих"
                     value={form.verse}
                     onChange={(e) => updateField('verse', e.target.value)}
                     placeholder="Стих"
@@ -228,6 +232,7 @@ export function CollectionPage() {
                   />
                 </div>
                 <textarea
+                  aria-label="Текст стиха"
                   value={form.text}
                   onChange={(e) => updateField('text', e.target.value)}
                   rows={4}

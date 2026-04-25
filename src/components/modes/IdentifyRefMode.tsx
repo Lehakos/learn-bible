@@ -109,11 +109,15 @@ export function IdentifyRefMode({
       <div className="flex flex-col gap-4">
         {/* Книга — combobox с поиском */}
         <div>
-          <label className="mb-1 block text-sm font-medium text-muted-foreground">
+          <label
+            htmlFor={`identify-book-${verse.id}`}
+            className="mb-1 block text-sm font-medium text-muted-foreground"
+          >
             Книга
           </label>
           <div className="relative" ref={dropdownRef}>
             <input
+              id={`identify-book-${verse.id}`}
               type="text"
               value={bookInput}
               onChange={(e) => {
@@ -148,10 +152,14 @@ export function IdentifyRefMode({
         {/* Глава и стих — числовые инпуты в ряд */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="mb-1 block text-sm font-medium text-muted-foreground">
+            <label
+              htmlFor={`identify-chapter-${verse.id}`}
+              className="mb-1 block text-sm font-medium text-muted-foreground"
+            >
               Глава
             </label>
             <input
+              id={`identify-chapter-${verse.id}`}
               type="number"
               min={1}
               value={chapterInput}
@@ -168,10 +176,14 @@ export function IdentifyRefMode({
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-muted-foreground">
+            <label
+              htmlFor={`identify-verse-${verse.id}`}
+              className="mb-1 block text-sm font-medium text-muted-foreground"
+            >
               Стих
             </label>
             <input
+              id={`identify-verse-${verse.id}`}
               type="number"
               min={1}
               value={verseInput}
