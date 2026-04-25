@@ -1,149 +1,102 @@
-import { AvatarCategory, type AvatarItem } from '../types';
+import danielImage from '../assets/avatar/daniel.png';
+import davidImage from '../assets/avatar/david.png';
+import estherImage from '../assets/avatar/esther.png';
+import lydiaImage from '../assets/avatar/lydia.png';
+import maryImage from '../assets/avatar/mary.png';
+import mosesImage from '../assets/avatar/moses.png';
+import paulImage from '../assets/avatar/paul.png';
+import ruthImage from '../assets/avatar/ruth.png';
+import samsonImage from '../assets/avatar/samson.png';
+import type { AvatarCharacter } from '../types';
 
-export const avatarItems: AvatarItem[] = [
-  // Фоны (background)
+export const DEFAULT_AVATAR_ID = 'david';
+
+export const avatarCharacters: AvatarCharacter[] = [
   {
-    id: 'bg-sky',
-    category: AvatarCategory.BACKGROUND,
-    name: 'Небо',
-    emoji: '🌤️',
+    id: 'david',
+    name: 'Давид',
+    description: 'Юный пастух с пращой',
     unlockLevel: 1,
+    image: davidImage,
   },
   {
-    id: 'bg-garden',
-    category: AvatarCategory.BACKGROUND,
-    name: 'Сад',
-    emoji: '🌿',
+    id: 'ruth',
+    name: 'Руфь',
+    description: 'Верная труженица с колосьями',
     unlockLevel: 2,
+    image: ruthImage,
   },
   {
-    id: 'bg-mountains',
-    category: AvatarCategory.BACKGROUND,
-    name: 'Горы',
-    emoji: '⛰️',
+    id: 'daniel',
+    name: 'Даниил',
+    description: 'Мудрый юноша со свитком',
     unlockLevel: 3,
+    image: danielImage,
   },
   {
-    id: 'bg-sunset',
-    category: AvatarCategory.BACKGROUND,
-    name: 'Закат',
-    emoji: '🌅',
+    id: 'esther',
+    name: 'Есфирь',
+    description: 'Царица в царской одежде',
     unlockLevel: 4,
+    image: estherImage,
   },
   {
-    id: 'bg-stars',
-    category: AvatarCategory.BACKGROUND,
-    name: 'Звёзды',
-    emoji: '✨',
+    id: 'mary',
+    name: 'Мария',
+    description: 'Кроткий образ в синей накидке',
     unlockLevel: 5,
+    image: maryImage,
   },
   {
-    id: 'bg-temple',
-    category: AvatarCategory.BACKGROUND,
-    name: 'Храм',
-    emoji: '⛪',
-    unlockLevel: 7,
-  },
-
-  // Тело (body)
-  {
-    id: 'body-child',
-    category: AvatarCategory.BODY,
-    name: 'Ребёнок',
-    emoji: '🧒',
-    unlockLevel: 1,
-  },
-  {
-    id: 'body-boy',
-    category: AvatarCategory.BODY,
-    name: 'Мальчик',
-    emoji: '👦',
-    unlockLevel: 1,
-  },
-  {
-    id: 'body-girl',
-    category: AvatarCategory.BODY,
-    name: 'Девочка',
-    emoji: '👧',
-    unlockLevel: 1,
-  },
-  {
-    id: 'body-angel',
-    category: AvatarCategory.BODY,
-    name: 'Ангел',
-    emoji: '👼',
-    unlockLevel: 4,
-  },
-  {
-    id: 'body-king',
-    category: AvatarCategory.BODY,
-    name: 'Царь',
-    emoji: '🤴',
+    id: 'moses',
+    name: 'Моисей',
+    description: 'Пророк со скрижалями и посохом',
     unlockLevel: 6,
+    image: mosesImage,
   },
   {
-    id: 'body-princess',
-    category: AvatarCategory.BODY,
-    name: 'Принцесса',
-    emoji: '👸',
-    unlockLevel: 6,
-  },
-
-  // Аксессуары (accessory)
-  {
-    id: 'acc-book',
-    category: AvatarCategory.ACCESSORY,
-    name: 'Библия',
-    emoji: '📖',
-    unlockLevel: 1,
-  },
-  {
-    id: 'acc-cross',
-    category: AvatarCategory.ACCESSORY,
-    name: 'Крест',
-    emoji: '✝️',
-    unlockLevel: 2,
-  },
-  {
-    id: 'acc-crown',
-    category: AvatarCategory.ACCESSORY,
-    name: 'Корона',
-    emoji: '👑',
-    unlockLevel: 3,
-  },
-  {
-    id: 'acc-dove',
-    category: AvatarCategory.ACCESSORY,
-    name: 'Голубь',
-    emoji: '🕊️',
-    unlockLevel: 3,
-  },
-  {
-    id: 'acc-lamp',
-    category: AvatarCategory.ACCESSORY,
-    name: 'Светильник',
-    emoji: '🪔',
-    unlockLevel: 4,
-  },
-  {
-    id: 'acc-harp',
-    category: AvatarCategory.ACCESSORY,
-    name: 'Арфа',
-    emoji: '🎵',
-    unlockLevel: 5,
-  },
-  {
-    id: 'acc-scroll',
-    category: AvatarCategory.ACCESSORY,
-    name: 'Свиток',
-    emoji: '📜',
-    unlockLevel: 5,
-  },
-  {
-    id: 'acc-star',
-    category: AvatarCategory.ACCESSORY,
-    name: 'Звезда',
-    emoji: '⭐',
+    id: 'paul',
+    name: 'Павел',
+    description: 'Апостол-путешественник со свитком',
     unlockLevel: 7,
+    image: paulImage,
+  },
+  {
+    id: 'samson',
+    name: 'Самсон',
+    description: 'Силач с семью косами',
+    unlockLevel: 8,
+    image: samsonImage,
+  },
+  {
+    id: 'lydia',
+    name: 'Лидия',
+    description: 'Торговка пурпурной тканью',
+    unlockLevel: 9,
+    image: lydiaImage,
   },
 ];
+
+const avatarsById = new Map(avatarCharacters.map((avatar) => [avatar.id, avatar]));
+
+export function getAvatarCharacter(id: string | undefined): AvatarCharacter {
+  return avatarsById.get(id ?? '') ?? avatarCharacters[0];
+}
+
+export function isAvatarUnlocked(id: string | undefined, level: number): boolean {
+  const avatar = avatarsById.get(id ?? '');
+  return !!avatar && avatar.unlockLevel <= level;
+}
+
+export function resolveAvatarId(id: string | undefined, level: number): string {
+  return isAvatarUnlocked(id, level) ? id! : DEFAULT_AVATAR_ID;
+}
+
+export function getNewAvatarCharacters(previousLevel: number, nextLevel: number): AvatarCharacter[] {
+  return avatarCharacters.filter(
+    (avatar) =>
+      avatar.id !== DEFAULT_AVATAR_ID &&
+      avatar.unlockLevel > previousLevel &&
+      avatar.unlockLevel <= nextLevel,
+  );
+}

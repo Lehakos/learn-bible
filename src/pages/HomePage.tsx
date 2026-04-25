@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../store/AppContext';
-import { Avatar } from '../components/Avatar';
+import { AvatarPreview } from '../components/Avatar';
 import { XPBar } from '../components/XPBar';
 import { BottomNav } from '../components/BottomNav';
 import { Button } from '../components/ui/button';
@@ -23,7 +23,7 @@ export function HomePage() {
       <main className="flex flex-1 flex-col items-center justify-center gap-8 overflow-y-auto px-6 py-10">
         {/* Profile card */}
         <div className="w-full max-w-sm rounded-2xl bg-card p-6 shadow-sm flex flex-col items-center gap-4">
-          <Avatar equippedItems={profile.equippedItems} size={AvatarSize.LG} />
+          <AvatarPreview avatarId={profile.avatarId} size={AvatarSize.LG} />
           <h1 className="text-xl font-bold text-foreground">{profile.name}</h1>
           <div className="w-full">
             <XPBar level={profile.level} xp={profile.xp} />

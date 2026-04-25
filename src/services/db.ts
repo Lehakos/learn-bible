@@ -1,5 +1,6 @@
 import { GameMode, type BibleVerse, type UserAchievement, type UserProfile, type UserVerseStatus } from '../types';
 import { achievements as defaultAchievements } from '../data/achievements';
+import { DEFAULT_AVATAR_ID, resolveAvatarId } from '../data/avatarItems';
 
 const DB_NAME = 'BibleVersesGame';
 const DB_VERSION = 2;
@@ -99,13 +100,18 @@ export async function addCustomVerse(verse: BibleVerse): Promise<void> {
 
 export async function initDefaultData(): Promise<UserProfile> {
   const existing = await getProfile();
-  if (existing) return existing;
+  if (existing) {
+    const normalized = normalizeProfile(existing);
+    await saveProfile(normalized);
+    return normalized;
+  }
 
   const profile: UserProfile = {
     id: 'user',
     name: 'Игрок',
     level: 1,
     xp: 0,
+    avatarId: DEFAULT_AVATAR_ID,
     equippedItems: [],
     unlockedModes: [
       GameMode.FILL_GAPS,
@@ -126,4 +132,18 @@ export async function initDefaultData(): Promise<UserProfile> {
   }
 
   return profile;
+}
+
+function normalizeProfile(profile: UserProfile): UserProfile {
+  return {
+    ...profile,
+    avatarId: resolveAvatarId(profile.avatarId, profile.level),
+    equippedItems: profile.equippedItems ?? [],
+    unlockedModes: profile.unlockedModes ?? [
+      GameMode.FILL_GAPS,
+      GameMode.BUILD_VERSE,
+      GameMode.FIND_TEXT,
+      GameMode.IDENTIFY_REF,
+    ],
+  };
 }

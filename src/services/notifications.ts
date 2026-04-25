@@ -1,4 +1,4 @@
-import type { AvatarItem } from '../types';
+import type { AvatarCharacter } from '../types';
 
 export enum NotificationKind {
   LEVEL = 'level',
@@ -46,11 +46,11 @@ export function notifyAchievementUnlocked(title: string, iconEmoji: string) {
   });
 }
 
-export function notifyItemUnlocked(item: AvatarItem) {
+export function notifyItemUnlocked(item: AvatarCharacter) {
   emitNotification({
     kind: NotificationKind.ITEM,
-    title: 'Новый предмет',
-    description: `${item.emoji} ${item.name} теперь доступен в аватаре`,
+    title: `Новый аватар: ${item.name}`,
+    description: item.description,
     duration: 4000,
   });
 }

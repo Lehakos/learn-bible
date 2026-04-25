@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useReducer, type ReactNode } from 'react';
 import { achievements as allAchievements } from '../data/achievements';
-import { avatarItems } from '../data/avatarItems';
+import { getNewAvatarCharacters, isAvatarUnlocked } from '../data/avatarItems';
 import { verses as defaultVerses } from '../data/verses';
 import {
   notifyAchievementUnlocked,
@@ -19,7 +19,13 @@ import {
   updateAchievement,
   updateVerseStatus as saveVerseStatus,
 } from '../services/db';
-import { VerseStatus, type BibleVerse, type UserAchievement, type UserProfile, type UserVerseStatus } from '../types';
+import {
+  VerseStatus,
+  type BibleVerse,
+  type UserAchievement,
+  type UserProfile,
+  type UserVerseStatus,
+} from '../types';
 
 interface AppState {
   profile: UserProfile | null;
@@ -99,7 +105,7 @@ interface AppContextValue extends AppState {
   markAchievementsAsSeen: () => Promise<void>;
   setVerseStatus: (verseId: string, status: UserVerseStatus['status']) => Promise<void>;
   markVerseCompleted: (verseId: string) => Promise<void>;
-  equipItem: (itemId: string) => Promise<void>;
+  selectAvatar: (avatarId: string) => Promise<void>;
   addCustomVerse: (input: NewVerseInput) => Promise<BibleVerse>;
 }
 
@@ -149,10 +155,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     if (leveledUp) {
       notifyLevelUp(level);
-      const newlyUnlockedItems = avatarItems.filter(
-        (item) => item.unlockLevel > previousLevel && item.unlockLevel <= level,
-      );
-      newlyUnlockedItems.forEach((item) => {
+      getNewAvatarCharacters(previousLevel, level).forEach((item) => {
         notifyItemUnlocked(item);
       });
     }
@@ -233,14 +236,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await setVerseStatus(verseId, VerseStatus.MASTERED);
   }
 
-  async function equipItem(itemId: string) {
+  async function selectAvatar(avatarId: string) {
     if (!state.profile) return;
+    if (!isAvatarUnlocked(avatarId, state.profile.level)) return;
 
-    const equippedItems = state.profile.equippedItems.includes(itemId)
-      ? state.profile.equippedItems.filter((id) => id !== itemId)
-      : [...state.profile.equippedItems, itemId];
-
-    const updated: UserProfile = { ...state.profile, equippedItems };
+    const updated: UserProfile = { ...state.profile, avatarId };
     dispatch({ type: 'SET_PROFILE', profile: updated });
     await saveProfile(updated);
   }
@@ -271,7 +271,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         markAchievementsAsSeen,
         setVerseStatus,
         markVerseCompleted,
-        equipItem,
+        selectAvatar,
         addCustomVerse,
       }}
     >

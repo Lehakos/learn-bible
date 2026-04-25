@@ -1,5 +1,10 @@
 import { useApp } from '../store/AppContext';
-import type { BibleVerse, UserAchievement, UserProfile, UserVerseStatus } from '../types';
+import type {
+  BibleVerse,
+  UserAchievement,
+  UserProfile,
+  UserVerseStatus,
+} from '../types';
 
 interface UseProfileResult {
   profile: UserProfile | null;
@@ -11,7 +16,7 @@ interface UseProfileResult {
   unlockAchievement: (id: string) => Promise<void>;
   setVerseStatus: (verseId: string, status: UserVerseStatus['status']) => Promise<void>;
   markVerseCompleted: (verseId: string) => Promise<void>;
-  equipItem: (itemId: string) => Promise<void>;
+  selectAvatar: (avatarId: string) => Promise<void>;
 }
 
 export function useProfile(): UseProfileResult {
@@ -25,7 +30,7 @@ export function useProfile(): UseProfileResult {
     unlockAchievement,
     setVerseStatus,
     markVerseCompleted,
-    equipItem,
+    selectAvatar,
   } = useApp();
 
   return {
@@ -38,6 +43,6 @@ export function useProfile(): UseProfileResult {
     unlockAchievement,
     setVerseStatus,
     markVerseCompleted,
-    equipItem,
+    selectAvatar,
   };
 }

@@ -1,38 +1,38 @@
-import { avatarItems } from '../data/avatarItems';
+import { getAvatarCharacter } from '../data/avatarItems';
+import { cn } from '../lib/utils';
 import { AvatarSize } from '../types/avatar';
-import { AvatarCategory } from '../types';
 
-interface AvatarProps {
-  equippedItems: string[];
+interface AvatarPreviewProps {
+  avatarId: string;
   size?: AvatarSize;
+  className?: string;
 }
 
 const sizeClasses: Record<AvatarSize, string> = {
-  [AvatarSize.SM]: 'text-3xl w-14 h-14',
-  [AvatarSize.MD]: 'text-5xl w-20 h-20',
-  [AvatarSize.LG]: 'text-7xl w-28 h-28',
+  [AvatarSize.SM]: 'w-14',
+  [AvatarSize.MD]: 'w-24',
+  [AvatarSize.LG]: 'w-36',
 };
 
-export function Avatar({ equippedItems, size = AvatarSize.MD }: AvatarProps) {
-  const equipped = avatarItems.filter((item) => equippedItems.includes(item.id));
-
-  const bg = equipped.find((i) => i.category === AvatarCategory.BACKGROUND);
-  const body = equipped.find((i) => i.category === AvatarCategory.BODY);
-  const acc = equipped.find((i) => i.category === AvatarCategory.ACCESSORY);
+export function AvatarPreview({ avatarId, size = AvatarSize.MD, className }: AvatarPreviewProps) {
+  const avatar = getAvatarCharacter(avatarId);
 
   return (
     <div
-      className={`relative flex items-center justify-center rounded-full bg-slate-100 ${sizeClasses[size]}`}
+      data-testid="avatar-preview"
+      className={cn(
+        'relative aspect-[3/4] overflow-hidden rounded-md bg-secondary/60 shadow-inner',
+        sizeClasses[size],
+        className,
+      )}
     >
-      {bg && (
-        <span className="absolute inset-0 flex items-center justify-center opacity-40 text-[0.6em]">
-          {bg.emoji}
-        </span>
-      )}
-      <span className="relative z-10 leading-none">{body?.emoji ?? '🧒'}</span>
-      {acc && (
-        <span className="absolute -bottom-1 -right-1 text-[0.4em] leading-none">{acc.emoji}</span>
-      )}
+      <img
+        src={avatar.image}
+        alt=""
+        aria-hidden="true"
+        draggable={false}
+        className="absolute inset-0 h-full w-full object-contain"
+      />
     </div>
   );
 }

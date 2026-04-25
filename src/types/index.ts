@@ -30,6 +30,7 @@ export interface UserProfile {
   name: string;
   level: number;
   xp: number;
+  avatarId: string;
   equippedItems: string[];
   unlockedModes: GameMode[];
 }
@@ -50,18 +51,12 @@ export interface UserAchievement {
   seenAt?: string;
 }
 
-export enum AvatarCategory {
-  BACKGROUND = 'background',
-  BODY = 'body',
-  ACCESSORY = 'accessory',
-}
-
-export interface AvatarItem {
+export interface AvatarCharacter {
   id: string;
-  category: AvatarCategory;
   name: string;
-  emoji: string;
+  description: string;
   unlockLevel: number;
+  image: string;
 }
 
 export interface UserVerseStatus {
