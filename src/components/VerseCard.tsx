@@ -1,3 +1,4 @@
+import { Trash2 } from 'lucide-react';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { VerseStatus, type BibleVerse, type UserVerseStats, type UserVerseStatus } from '../types';
@@ -9,6 +10,8 @@ interface VerseCardProps {
   showStats?: boolean;
   onRepeat?: (verseId: string) => void;
   onToggleMastered?: (verseId: string, nextMastered: boolean) => void;
+  onDelete?: (verseId: string) => void;
+  deleting?: boolean;
 }
 
 function getAccuracy(stats: UserVerseStats): number {
@@ -33,6 +36,8 @@ export function VerseCard({
   showStats = false,
   onRepeat,
   onToggleMastered,
+  onDelete,
+  deleting = false,
 }: VerseCardProps) {
   const ref = `${verse.book} ${verse.chapter}:${verse.verse}`;
   const mastered = status?.status === VerseStatus.MASTERED;
@@ -103,10 +108,23 @@ export function VerseCard({
             )}
           </div>
         )}
-        <div className="mt-3 space-y-2">
+        <div className={onRepeat && onDelete ? 'mt-3 grid grid-cols-2 gap-2' : 'mt-3 space-y-2'}>
           {onRepeat && (
             <Button variant="outline" size="sm" className="w-full" onClick={() => onRepeat(verse.id)}>
               Повторить
+            </Button>
+          )}
+          {onDelete && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full border-rose-200 bg-rose-50/60 text-rose-700 hover:bg-rose-100/70 hover:text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/20 dark:text-rose-300 dark:hover:bg-rose-950/35"
+              aria-label={`Удалить стих ${ref}`}
+              disabled={deleting}
+              onClick={() => onDelete(verse.id)}
+            >
+              <Trash2 className="h-4 w-4" />
+              {deleting ? 'Удаляем...' : 'Удалить'}
             </Button>
           )}
         </div>

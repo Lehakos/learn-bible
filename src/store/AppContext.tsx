@@ -11,6 +11,7 @@ import {
 } from '../services/notifications';
 import {
   addCustomVerse as saveCustomVerse,
+  deleteCustomVerse as removeCustomVerse,
   getAchievements,
   getCustomVerses,
   getVerseStats,
@@ -52,7 +53,8 @@ type AppAction =
   | { type: 'SET_ACHIEVEMENT'; achievement: UserAchievement }
   | { type: 'SET_VERSE_STATUS'; status: UserVerseStatus }
   | { type: 'SET_VERSE_STATS'; stats: UserVerseStats }
-  | { type: 'ADD_CUSTOM_VERSE'; verse: BibleVerse };
+  | { type: 'ADD_CUSTOM_VERSE'; verse: BibleVerse }
+  | { type: 'REMOVE_CUSTOM_VERSE'; verseId: string };
 
 function reducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
@@ -104,6 +106,13 @@ function reducer(state: AppState, action: AppAction): AppState {
     }
     case 'ADD_CUSTOM_VERSE':
       return { ...state, customVerses: [action.verse, ...state.customVerses] };
+    case 'REMOVE_CUSTOM_VERSE':
+      return {
+        ...state,
+        customVerses: state.customVerses.filter((verse) => verse.id !== action.verseId),
+        verseStatuses: state.verseStatuses.filter((status) => status.verseId !== action.verseId),
+        verseStats: state.verseStats.filter((stats) => stats.verseId !== action.verseId),
+      };
   }
 }
 
@@ -130,6 +139,7 @@ interface AppContextValue extends AppState {
   ) => Promise<void>;
   selectAvatar: (avatarId: string) => Promise<void>;
   addCustomVerse: (input: NewVerseInput) => Promise<BibleVerse>;
+  deleteCustomVerse: (verseId: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -310,6 +320,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return verse;
   }
 
+  async function deleteCustomVerse(verseId: string): Promise<void> {
+    const exists = state.customVerses.some((verse) => verse.id === verseId);
+    if (!exists) return;
+
+    await removeCustomVerse(verseId);
+    dispatch({ type: 'REMOVE_CUSTOM_VERSE', verseId });
+  }
+
   return (
     <AppContext.Provider
       value={{
@@ -324,6 +342,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         recordVersePractice,
         selectAvatar,
         addCustomVerse,
+        deleteCustomVerse,
       }}
     >
       {children}

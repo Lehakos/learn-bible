@@ -68,6 +68,24 @@ function put(db: IDBDatabase, store: string, value: unknown): Promise<void> {
   });
 }
 
+function deleteFromStores(
+  db: IDBDatabase,
+  storeNames: readonly string[],
+  key: string,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction([...storeNames], 'readwrite');
+
+    for (const storeName of storeNames) {
+      tx.objectStore(storeName).delete(key);
+    }
+
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error);
+  });
+}
+
 export async function getProfile(): Promise<UserProfile | undefined> {
   const db = await openDB();
   return get<UserProfile>(db, 'profile', 'user');
@@ -116,6 +134,11 @@ export async function getCustomVerses(): Promise<BibleVerse[]> {
 export async function addCustomVerse(verse: BibleVerse): Promise<void> {
   const db = await openDB();
   await put(db, 'customVerses', verse);
+}
+
+export async function deleteCustomVerse(verseId: string): Promise<void> {
+  const db = await openDB();
+  await deleteFromStores(db, ['customVerses', 'verseStatus', 'verseStats'], verseId);
 }
 
 export async function initDefaultData(): Promise<UserProfile> {

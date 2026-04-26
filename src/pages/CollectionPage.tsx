@@ -68,17 +68,21 @@ export function CollectionPage() {
   const {
     loading,
     profile,
+    customVerses,
     verseStatuses,
     verseStats,
     allVerses,
     addCustomVerse,
+    deleteCustomVerse,
     setVerseStatus,
   } = useApp();
 
   const [showForm, setShowForm] = useState(false);
   const [showBookDropdown, setShowBookDropdown] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deletingVerseId, setDeletingVerseId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [bibleManifest, setBibleManifest] = useState<BibleTextManifest | null>(null);
   const [selectedBibleBook, setSelectedBibleBook] = useState<BibleTextBook | null>(null);
   const [bibleLoadState, setBibleLoadState] = useState<
@@ -129,6 +133,10 @@ export function CollectionPage() {
   const statusesByVerseId = useMemo(() => {
     return new Map(verseStatuses.map((status) => [status.verseId, status]));
   }, [verseStatuses]);
+
+  const customVerseIds = useMemo(() => {
+    return new Set(customVerses.map((verse) => verse.id));
+  }, [customVerses]);
 
   const statsByVerseId = useMemo(() => {
     return new Map(verseStats.map((stats) => [stats.verseId, stats]));
@@ -267,6 +275,27 @@ export function CollectionPage() {
     );
   }
 
+  async function handleDeleteVerse(verseId: string) {
+    const verse = allVerses.find((candidate) => candidate.id === verseId);
+    if (!verse || !customVerseIds.has(verseId)) return;
+
+    const ref = `${verse.book} ${verse.chapter}:${verse.verse}`;
+    const confirmed = window.confirm(
+      `Удалить стих ${ref} из коллекции? Статистика по нему тоже удалится.`,
+    );
+    if (!confirmed) return;
+
+    setDeleteError(null);
+    setDeletingVerseId(verseId);
+    try {
+      await deleteCustomVerse(verseId);
+    } catch {
+      setDeleteError('Не удалось удалить стих. Попробуй снова.');
+    } finally {
+      setDeletingVerseId((current) => (current === verseId ? null : current));
+    }
+  }
+
   function handleToggleForm() {
     setError(null);
     if (showForm && (addVerseRequested || addVerseHint)) {
@@ -395,6 +424,12 @@ export function CollectionPage() {
           {addVerseHint && (
             <div className="rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-sm text-primary">
               {addVerseHint}
+            </div>
+          )}
+
+          {deleteError && (
+            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {deleteError}
             </div>
           )}
 
@@ -594,6 +629,8 @@ export function CollectionPage() {
                 showStats={showStats}
                 onRepeat={handleRepeat}
                 onToggleMastered={handleToggleMastered}
+                onDelete={customVerseIds.has(verse.id) ? handleDeleteVerse : undefined}
+                deleting={deletingVerseId === verse.id}
               />
             ))}
             {filteredVerses.length === 0 && (

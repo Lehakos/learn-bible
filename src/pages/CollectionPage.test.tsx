@@ -400,6 +400,44 @@ describe('CollectionPage (integration)', () => {
     expect(statuses[0]?.completedAt).toBeUndefined();
   });
 
+  it('deletes a custom verse from the collection with its progress data', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    await db.addCustomVerse(learningVerse);
+    await db.updateVerseStatus({
+      verseId: learningVerse.id,
+      status: VerseStatus.MASTERED,
+      completedAt: '2026-04-26T10:00:00.000Z',
+    });
+    await db.updateVerseStats({
+      verseId: learningVerse.id,
+      attempts: 2,
+      correct: 1,
+      wrong: 1,
+      skipped: 0,
+      currentStreak: 0,
+      bestStreak: 1,
+      lastPracticedAt: '2026-04-26T10:00:00.000Z',
+    });
+
+    renderCollectionPage();
+
+    expect(await screen.findByText(learningVerse.text)).toBeInTheDocument();
+    await user.click(
+      screen.getByRole('button', {
+        name: `Удалить стих ${learningVerse.book} ${learningVerse.chapter}:${learningVerse.verse}`,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByText(learningVerse.text)).not.toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: 'Все (0)' })).toBeInTheDocument();
+    expect(await db.getCustomVerses()).toEqual([]);
+    expect(await db.getVerseStatuses()).toEqual([]);
+    expect(await db.getVerseStats()).toEqual([]);
+  });
+
   it('validates that chapter and verse are greater than zero', async () => {
     const user = userEvent.setup();
     renderCollectionPage();
