@@ -1,9 +1,9 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { act } from 'react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { addCustomVerse } from '../services/db';
+import { addCustomVerse, getVerseStats } from '../services/db';
 import { AppProvider } from '../store/AppContext';
 import { resetAppDb } from '../test/testDb';
 import { Difficulty, GameMode, type BibleVerse, type GameResult, type GameSession } from '../types';
@@ -238,6 +238,60 @@ describe('GamePage (integration)', () => {
         wrong: 1,
         mode: GameMode.FILL_GAPS,
         verseIds: [fillGapsVerse.id, secondFillGapsVerse.id],
+      });
+    });
+
+    it('records per-verse stats for wrong answers and skipped verses', async () => {
+      const user = userEvent.setup();
+      await seedVerses([fillGapsVerse, secondFillGapsVerse]);
+
+      saveSession({
+        id: 'session-fill-stats',
+        mode: GameMode.FILL_GAPS,
+        verses: [fillGapsVerse, secondFillGapsVerse],
+        difficulty: Difficulty.EASY,
+        startedAt: new Date().toISOString(),
+      });
+
+      renderGamePage();
+      expect(await screen.findByRole('button', { name: 'Первый' })).toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: 'Первый' }));
+      await user.click(screen.getByRole('button', { name: 'Второй' }));
+      await user.click(screen.getByRole('button', { name: 'Дальше' }));
+
+      expect(await screen.findByText('Тест 1:5')).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: 'Пропустить стих' }));
+
+      await expectResultScreen();
+
+      await waitFor(async () => {
+        const stats = await getVerseStats();
+
+        expect(stats).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              verseId: fillGapsVerse.id,
+              attempts: 1,
+              correct: 0,
+              wrong: 1,
+              skipped: 0,
+              currentStreak: 0,
+              bestStreak: 0,
+              lastPracticedAt: expect.any(String),
+            }),
+            expect.objectContaining({
+              verseId: secondFillGapsVerse.id,
+              attempts: 1,
+              correct: 0,
+              wrong: 1,
+              skipped: 1,
+              currentStreak: 0,
+              bestStreak: 0,
+              lastPracticedAt: expect.any(String),
+            }),
+          ]),
+        );
       });
     });
   });

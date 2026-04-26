@@ -95,6 +95,64 @@ describe('CollectionPage (integration)', () => {
     expect(screen.queryByText(masteredVerse.text)).not.toBeInTheDocument();
   });
 
+  it('shows practice statistics summary and per-verse stats', async () => {
+    const user = userEvent.setup();
+    await db.addCustomVerse(masteredVerse);
+    await db.addCustomVerse(learningVerse);
+    await db.updateVerseStats({
+      verseId: masteredVerse.id,
+      attempts: 4,
+      correct: 3,
+      wrong: 1,
+      skipped: 1,
+      currentStreak: 2,
+      bestStreak: 3,
+      lastPracticedAt: '2026-04-26T10:00:00.000Z',
+      lastCorrectAt: '2026-04-26T10:00:00.000Z',
+    });
+
+    renderCollectionPage();
+
+    expect(await screen.findByRole('heading', { name: 'Коллекция стихов' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Показать статистику' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+    expect(screen.queryByText('Статистика практики')).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText(
+        `Статистика стиха ${masteredVerse.book} ${masteredVerse.chapter}:${masteredVerse.verse}`,
+      ),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Показать статистику' }));
+
+    expect(screen.getByRole('button', { name: 'Скрыть статистику' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(screen.getByText('Статистика практики')).toBeInTheDocument();
+    expect(screen.getByText('Стихов')).toBeInTheDocument();
+    expect(screen.getAllByText('4')).not.toHaveLength(0);
+    expect(screen.getAllByText('75%')).not.toHaveLength(0);
+
+    const practicedStats = screen.getByLabelText(
+      `Статистика стиха ${masteredVerse.book} ${masteredVerse.chapter}:${masteredVerse.verse}`,
+    );
+    expect(practicedStats).toHaveTextContent('4');
+    expect(practicedStats).toHaveTextContent('75%');
+    expect(practicedStats).toHaveTextContent('3');
+    expect(practicedStats).toHaveTextContent('пропусков: 1');
+
+    const emptyStats = screen.getByLabelText(
+      `Статистика стиха ${learningVerse.book} ${learningVerse.chapter}:${learningVerse.verse}`,
+    );
+    expect(emptyStats).toHaveTextContent('Статистика появится после первой тренировки.');
+
+    await user.click(screen.getByRole('button', { name: 'Скрыть статистику' }));
+    expect(screen.queryByText('Статистика практики')).not.toBeInTheDocument();
+  });
+
   it('shows validation error and saves a custom verse through the form', async () => {
     const user = userEvent.setup();
     renderCollectionPage();

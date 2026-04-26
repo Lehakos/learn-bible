@@ -1,6 +1,6 @@
 const DB_NAME = 'BibleVersesGame';
-const DB_VERSION = 2;
-const STORE_NAMES = ['profile', 'achievements', 'verseStatus', 'customVerses'] as const;
+const DB_VERSION = 3;
+const STORE_NAMES = ['profile', 'achievements', 'verseStatus', 'customVerses', 'verseStats'] as const;
 
 function openTestDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -14,7 +14,7 @@ function openTestDb(): Promise<IDBDatabase> {
             db.createObjectStore(storeName, { keyPath: 'id' });
           } else if (storeName === 'achievements') {
             db.createObjectStore(storeName, { keyPath: 'achievementId' });
-          } else if (storeName === 'verseStatus') {
+          } else if (storeName === 'verseStatus' || storeName === 'verseStats') {
             db.createObjectStore(storeName, { keyPath: 'verseId' });
           } else {
             db.createObjectStore(storeName, { keyPath: 'id' });

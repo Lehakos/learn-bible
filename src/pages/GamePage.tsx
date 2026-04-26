@@ -24,7 +24,7 @@ interface PendingAdvance {
 
 export function GamePage() {
   const navigate = useNavigate();
-  const { allVerses, loading } = useApp();
+  const { allVerses, loading, recordVersePractice } = useApp();
   const [session] = useState(() => loadSession());
 
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -77,6 +77,8 @@ export function GamePage() {
   function handleAnswer(isCorrect: boolean, xpEarned: number, options?: AnswerOptions) {
     if (isAutoAdvanceScheduled || pendingAdvance) return;
 
+    void recordVersePractice(currentVerse.id, isCorrect);
+
     if (isCorrect) {
       setStreak((s) => s + 1);
       setCorrect((c) => c + 1);
@@ -111,6 +113,8 @@ export function GamePage() {
 
   function handleSkipVerse() {
     if (isAutoAdvanceScheduled || pendingAdvance) return;
+
+    void recordVersePractice(currentVerse.id, false, { skipped: true });
 
     setStreak(0);
     setWrong((w) => w + 1);

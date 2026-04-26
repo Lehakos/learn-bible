@@ -65,6 +65,18 @@ export interface UserVerseStatus {
   completedAt?: string;
 }
 
+export interface UserVerseStats {
+  verseId: string;
+  attempts: number;
+  correct: number;
+  wrong: number;
+  skipped: number;
+  currentStreak: number;
+  bestStreak: number;
+  lastPracticedAt?: string;
+  lastCorrectAt?: string;
+}
+
 export interface GameSession {
   id: string;
   mode: GameMode;

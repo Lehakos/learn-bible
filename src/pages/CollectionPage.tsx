@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { BarChart3, EyeOff } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { BottomNav } from '../components/BottomNav';
 import { VerseCard } from '../components/VerseCard';
@@ -35,7 +36,15 @@ const noVersesHint = 'Добавь стих, чтобы выбрать зада�
 export function CollectionPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { loading, profile, verseStatuses, allVerses, addCustomVerse, setVerseStatus } = useApp();
+  const {
+    loading,
+    profile,
+    verseStatuses,
+    verseStats,
+    allVerses,
+    addCustomVerse,
+    setVerseStatus,
+  } = useApp();
 
   const [showForm, setShowForm] = useState(false);
   const [showBookDropdown, setShowBookDropdown] = useState(false);
@@ -43,6 +52,7 @@ export function CollectionPage() {
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(initialForm);
   const [verseFilter, setVerseFilter] = useState<VerseFilter>(VerseFilter.ALL);
+  const [showStats, setShowStats] = useState(false);
   const addVerseRequested = searchParams.get('add') === 'verse';
   const addVerseHint = searchParams.get('hint') === 'no-verses' ? noVersesHint : null;
 
@@ -55,6 +65,10 @@ export function CollectionPage() {
   const statusesByVerseId = useMemo(() => {
     return new Map(verseStatuses.map((status) => [status.verseId, status]));
   }, [verseStatuses]);
+
+  const statsByVerseId = useMemo(() => {
+    return new Map(verseStats.map((stats) => [stats.verseId, stats]));
+  }, [verseStats]);
 
   const sortedVerses = useMemo(() => {
     return [...allVerses].sort((a, b) => {
@@ -81,6 +95,26 @@ export function CollectionPage() {
       return true;
     });
   }, [sortedVerses, statusesByVerseId, verseFilter]);
+
+  const statsSummary = useMemo(() => {
+    const verseIds = new Set(allVerses.map((verse) => verse.id));
+    const activeStats = verseStats.filter(
+      (stats) => verseIds.has(stats.verseId) && stats.attempts > 0,
+    );
+    const attempts = activeStats.reduce((sum, stats) => sum + stats.attempts, 0);
+    const correct = activeStats.reduce((sum, stats) => sum + stats.correct, 0);
+    const bestStreak = activeStats.reduce(
+      (best, stats) => Math.max(best, stats.bestStreak),
+      0,
+    );
+
+    return {
+      practicedVerses: activeStats.length,
+      attempts,
+      accuracy: attempts > 0 ? Math.round((correct / attempts) * 100) : 0,
+      bestStreak,
+    };
+  }, [allVerses, verseStats]);
 
   const bookOptions = useMemo(() => getBookOptions(allVerses), [allVerses]);
   const filteredBookOptions = useMemo(() => {
@@ -175,22 +209,64 @@ export function CollectionPage() {
             ← Назад
           </button>
 
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h1 className="text-2xl font-bold text-foreground">Коллекция стихов</h1>
               <p className="mt-1 text-sm text-muted-foreground">
                 Добавляй свои стихи и повторяй их в игровых режимах
               </p>
             </div>
-            <Button size="sm" onClick={handleToggleForm}>
-              {showForm ? 'Отмена' : 'Добавить стих'}
-            </Button>
+            <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto">
+              <Button
+                size="sm"
+                variant={showStats ? 'secondary' : 'outline'}
+                aria-pressed={showStats}
+                onClick={() => setShowStats((prev) => !prev)}
+                className="w-full sm:w-auto"
+              >
+                {showStats ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <BarChart3 className="h-4 w-4" />
+                )}
+                {showStats ? 'Скрыть статистику' : 'Показать статистику'}
+              </Button>
+              <Button size="sm" onClick={handleToggleForm} className="w-full sm:w-auto">
+                {showForm ? 'Отмена' : 'Добавить стих'}
+              </Button>
+            </div>
           </div>
 
           {addVerseHint && (
             <div className="rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-sm text-primary">
               {addVerseHint}
             </div>
+          )}
+
+          {showStats && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Статистика практики</CardTitle>
+              </CardHeader>
+              <CardContent className="grid grid-cols-2 gap-2 p-3 pt-0 sm:grid-cols-4">
+                <div className="rounded-md bg-muted/50 p-3 text-center">
+                  <p className="text-xl font-bold text-foreground">{statsSummary.practicedVerses}</p>
+                  <p className="text-xs text-muted-foreground">Стихов</p>
+                </div>
+                <div className="rounded-md bg-muted/50 p-3 text-center">
+                  <p className="text-xl font-bold text-foreground">{statsSummary.attempts}</p>
+                  <p className="text-xs text-muted-foreground">Попыток</p>
+                </div>
+                <div className="rounded-md bg-muted/50 p-3 text-center">
+                  <p className="text-xl font-bold text-foreground">{statsSummary.accuracy}%</p>
+                  <p className="text-xs text-muted-foreground">Точность</p>
+                </div>
+                <div className="rounded-md bg-muted/50 p-3 text-center">
+                  <p className="text-xl font-bold text-foreground">{statsSummary.bestStreak}</p>
+                  <p className="text-xs text-muted-foreground">Лучшая серия</p>
+                </div>
+              </CardContent>
+            </Card>
           )}
 
           {showForm && (
@@ -307,6 +383,8 @@ export function CollectionPage() {
                 key={verse.id}
                 verse={verse}
                 status={statusesByVerseId.get(verse.id)}
+                stats={statsByVerseId.get(verse.id)}
+                showStats={showStats}
                 onRepeat={handleRepeat}
                 onToggleMastered={handleToggleMastered}
               />

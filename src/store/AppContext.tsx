@@ -13,10 +13,12 @@ import {
   addCustomVerse as saveCustomVerse,
   getAchievements,
   getCustomVerses,
+  getVerseStats,
   getVerseStatuses,
   initDefaultData,
   saveProfile,
   updateAchievement,
+  updateVerseStats as saveVerseStats,
   updateVerseStatus as saveVerseStatus,
 } from '../services/db';
 import {
@@ -24,6 +26,7 @@ import {
   type BibleVerse,
   type UserAchievement,
   type UserProfile,
+  type UserVerseStats,
   type UserVerseStatus,
 } from '../types';
 
@@ -31,6 +34,7 @@ interface AppState {
   profile: UserProfile | null;
   achievements: UserAchievement[];
   verseStatuses: UserVerseStatus[];
+  verseStats: UserVerseStats[];
   customVerses: BibleVerse[];
   loading: boolean;
 }
@@ -41,11 +45,13 @@ type AppAction =
       profile: UserProfile;
       achievements: UserAchievement[];
       verseStatuses: UserVerseStatus[];
+      verseStats: UserVerseStats[];
       customVerses: BibleVerse[];
     }
   | { type: 'SET_PROFILE'; profile: UserProfile }
   | { type: 'SET_ACHIEVEMENT'; achievement: UserAchievement }
   | { type: 'SET_VERSE_STATUS'; status: UserVerseStatus }
+  | { type: 'SET_VERSE_STATS'; stats: UserVerseStats }
   | { type: 'ADD_CUSTOM_VERSE'; verse: BibleVerse };
 
 function reducer(state: AppState, action: AppAction): AppState {
@@ -55,6 +61,7 @@ function reducer(state: AppState, action: AppAction): AppState {
         profile: action.profile,
         achievements: action.achievements,
         verseStatuses: action.verseStatuses,
+        verseStats: action.verseStats,
         customVerses: action.customVerses,
         loading: false,
       };
@@ -84,6 +91,17 @@ function reducer(state: AppState, action: AppAction): AppState {
           : [...state.verseStatuses, action.status],
       };
     }
+    case 'SET_VERSE_STATS': {
+      const exists = state.verseStats.find((s) => s.verseId === action.stats.verseId);
+      return {
+        ...state,
+        verseStats: exists
+          ? state.verseStats.map((s) =>
+              s.verseId === action.stats.verseId ? action.stats : s,
+            )
+          : [...state.verseStats, action.stats],
+      };
+    }
     case 'ADD_CUSTOM_VERSE':
       return { ...state, customVerses: [action.verse, ...state.customVerses] };
   }
@@ -105,6 +123,11 @@ interface AppContextValue extends AppState {
   markAchievementsAsSeen: () => Promise<void>;
   setVerseStatus: (verseId: string, status: UserVerseStatus['status']) => Promise<void>;
   markVerseCompleted: (verseId: string) => Promise<void>;
+  recordVersePractice: (
+    verseId: string,
+    isCorrect: boolean,
+    options?: { skipped?: boolean },
+  ) => Promise<void>;
   selectAvatar: (avatarId: string) => Promise<void>;
   addCustomVerse: (input: NewVerseInput) => Promise<BibleVerse>;
 }
@@ -116,6 +139,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     profile: null,
     achievements: [],
     verseStatuses: [],
+    verseStats: [],
     customVerses: [],
     loading: true,
   });
@@ -125,8 +149,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const profile = await initDefaultData();
       const achievements = await getAchievements();
       const verseStatuses = await getVerseStatuses();
+      const verseStats = await getVerseStats();
       const customVerses = await getCustomVerses();
-      dispatch({ type: 'INIT', profile, achievements, verseStatuses, customVerses });
+      dispatch({ type: 'INIT', profile, achievements, verseStatuses, verseStats, customVerses });
     }
     init();
   }, []);
@@ -236,6 +261,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await setVerseStatus(verseId, VerseStatus.MASTERED);
   }
 
+  async function recordVersePractice(
+    verseId: string,
+    isCorrect: boolean,
+    options?: { skipped?: boolean },
+  ) {
+    const existing = state.verseStats.find((stats) => stats.verseId === verseId);
+    const now = new Date().toISOString();
+    const currentStreak = isCorrect ? (existing?.currentStreak ?? 0) + 1 : 0;
+
+    const updated: UserVerseStats = {
+      verseId,
+      attempts: (existing?.attempts ?? 0) + 1,
+      correct: (existing?.correct ?? 0) + (isCorrect ? 1 : 0),
+      wrong: (existing?.wrong ?? 0) + (isCorrect ? 0 : 1),
+      skipped: (existing?.skipped ?? 0) + (options?.skipped ? 1 : 0),
+      currentStreak,
+      bestStreak: Math.max(existing?.bestStreak ?? 0, currentStreak),
+      lastPracticedAt: now,
+      lastCorrectAt: isCorrect ? now : existing?.lastCorrectAt,
+    };
+
+    dispatch({ type: 'SET_VERSE_STATS', stats: updated });
+    await saveVerseStats(updated);
+  }
+
   async function selectAvatar(avatarId: string) {
     if (!state.profile) return;
     if (!isAvatarUnlocked(avatarId, state.profile.level)) return;
@@ -271,6 +321,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         markAchievementsAsSeen,
         setVerseStatus,
         markVerseCompleted,
+        recordVersePractice,
         selectAvatar,
         addCustomVerse,
       }}

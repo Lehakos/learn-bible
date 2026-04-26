@@ -1,17 +1,42 @@
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
-import { VerseStatus, type BibleVerse, type UserVerseStatus } from '../types';
+import { VerseStatus, type BibleVerse, type UserVerseStats, type UserVerseStatus } from '../types';
 
 interface VerseCardProps {
   verse: BibleVerse;
   status?: UserVerseStatus;
+  stats?: UserVerseStats;
+  showStats?: boolean;
   onRepeat?: (verseId: string) => void;
   onToggleMastered?: (verseId: string, nextMastered: boolean) => void;
 }
 
-export function VerseCard({ verse, status, onRepeat, onToggleMastered }: VerseCardProps) {
+function getAccuracy(stats: UserVerseStats): number {
+  return stats.attempts > 0 ? Math.round((stats.correct / stats.attempts) * 100) : 0;
+}
+
+function formatPracticeDate(iso: string | undefined): string {
+  if (!iso) return 'нет';
+
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return 'нет';
+
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  return `${day}.${month}.${date.getFullYear()}`;
+}
+
+export function VerseCard({
+  verse,
+  status,
+  stats,
+  showStats = false,
+  onRepeat,
+  onToggleMastered,
+}: VerseCardProps) {
   const ref = `${verse.book} ${verse.chapter}:${verse.verse}`;
   const mastered = status?.status === VerseStatus.MASTERED;
+  const hasStats = !!stats && stats.attempts > 0;
 
   return (
     <Card className={mastered ? 'border-green-500/40 bg-green-500/10' : ''}>
@@ -45,6 +70,39 @@ export function VerseCard({ verse, status, onRepeat, onToggleMastered }: VerseCa
             )}
           </div>
         </div>
+        {showStats && (
+          <div
+            aria-label={`Статистика стиха ${ref}`}
+            className="mt-3 rounded-md bg-muted/50 p-3"
+          >
+            {hasStats ? (
+              <>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div>
+                    <p className="text-base font-bold text-foreground">{stats.attempts}</p>
+                    <p className="text-[11px] uppercase text-muted-foreground">Попытки</p>
+                  </div>
+                  <div>
+                    <p className="text-base font-bold text-foreground">{getAccuracy(stats)}%</p>
+                    <p className="text-[11px] uppercase text-muted-foreground">Точность</p>
+                  </div>
+                  <div>
+                    <p className="text-base font-bold text-foreground">{stats.bestStreak}</p>
+                    <p className="text-[11px] uppercase text-muted-foreground">Серия</p>
+                  </div>
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Последняя тренировка: {formatPracticeDate(stats.lastPracticedAt)}
+                  {stats.skipped > 0 ? ` · пропусков: ${stats.skipped}` : ''}
+                </p>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Статистика появится после первой тренировки.
+              </p>
+            )}
+          </div>
+        )}
         <div className="mt-3 space-y-2">
           {onRepeat && (
             <Button variant="outline" size="sm" className="w-full" onClick={() => onRepeat(verse.id)}>

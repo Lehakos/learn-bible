@@ -1,9 +1,16 @@
-import { GameMode, type BibleVerse, type UserAchievement, type UserProfile, type UserVerseStatus } from '../types';
+import {
+  GameMode,
+  type BibleVerse,
+  type UserAchievement,
+  type UserProfile,
+  type UserVerseStats,
+  type UserVerseStatus,
+} from '../types';
 import { achievements as defaultAchievements } from '../data/achievements';
 import { DEFAULT_AVATAR_ID, resolveAvatarId } from '../data/avatarItems';
 
 const DB_NAME = 'BibleVersesGame';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -23,6 +30,9 @@ function openDB(): Promise<IDBDatabase> {
       }
       if (!db.objectStoreNames.contains('customVerses')) {
         db.createObjectStore('customVerses', { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains('verseStats')) {
+        db.createObjectStore('verseStats', { keyPath: 'verseId' });
       }
     };
 
@@ -86,6 +96,16 @@ export async function getVerseStatuses(): Promise<UserVerseStatus[]> {
 export async function updateVerseStatus(status: UserVerseStatus): Promise<void> {
   const db = await openDB();
   await put(db, 'verseStatus', status);
+}
+
+export async function getVerseStats(): Promise<UserVerseStats[]> {
+  const db = await openDB();
+  return getAll<UserVerseStats>(db, 'verseStats');
+}
+
+export async function updateVerseStats(stats: UserVerseStats): Promise<void> {
+  const db = await openDB();
+  await put(db, 'verseStats', stats);
 }
 
 export async function getCustomVerses(): Promise<BibleVerse[]> {
