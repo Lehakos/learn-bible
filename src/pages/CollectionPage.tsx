@@ -1,10 +1,19 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { BarChart3, EyeOff } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { BottomNav } from '../components/BottomNav';
 import { VerseCard } from '../components/VerseCard';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import {
+  findBibleBookMetadata,
+  getBibleVerseText,
+  loadBibleBook,
+  loadBibleManifest,
+  type BibleBookMetadata,
+  type BibleTextBook,
+  type BibleTextManifest,
+} from '../services/bibleText';
 import { getBookOptions } from '../services/gameService';
 import { useApp } from '../store/AppContext';
 import { Difficulty, VerseStatus } from '../types';
@@ -33,6 +42,26 @@ const initialForm: FormState = {
 
 const noVersesHint = 'Добавь стих, чтобы выбрать задание и начать игру.';
 
+function firstAvailableVerse(verseCount: number | undefined): string {
+  return verseCount && verseCount > 0 ? '1' : '';
+}
+
+function normalizeReferenceValue(value: string): number {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function resolveChapterValue(book: BibleBookMetadata, chapterValue: string): string {
+  const chapter = normalizeReferenceValue(chapterValue);
+  return chapter > 0 && book.chapters[chapter - 1] ? String(chapter) : '1';
+}
+
+function resolveVerseValue(verseCount: number | undefined, verseValue: string): string {
+  const verse = normalizeReferenceValue(verseValue);
+  if (verseCount && verse > 0 && verse <= verseCount) return String(verse);
+  return firstAvailableVerse(verseCount);
+}
+
 export function CollectionPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -50,6 +79,16 @@ export function CollectionPage() {
   const [showBookDropdown, setShowBookDropdown] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [bibleManifest, setBibleManifest] = useState<BibleTextManifest | null>(null);
+  const [selectedBibleBook, setSelectedBibleBook] = useState<BibleTextBook | null>(null);
+  const [bibleLoadState, setBibleLoadState] = useState<
+    'idle' | 'loading' | 'ready' | 'error'
+  >('idle');
+  const [bookLoadState, setBookLoadState] = useState<
+    'idle' | 'loading' | 'ready' | 'error'
+  >('idle');
+  const [bibleError, setBibleError] = useState<string | null>(null);
+  const bibleLoadStarted = useRef(false);
   const [form, setForm] = useState<FormState>(initialForm);
   const [verseFilter, setVerseFilter] = useState<VerseFilter>(VerseFilter.ALL);
   const [showStats, setShowStats] = useState(false);
@@ -61,6 +100,31 @@ export function CollectionPage() {
       setShowForm(true);
     }
   }, [addVerseRequested]);
+
+  useEffect(() => {
+    if (!showForm || bibleLoadStarted.current) return;
+
+    let active = true;
+    bibleLoadStarted.current = true;
+    setBibleLoadState('loading');
+    setBibleError(null);
+
+    loadBibleManifest()
+      .then((loadedBibleManifest) => {
+        if (!active) return;
+        setBibleManifest(loadedBibleManifest);
+        setBibleLoadState('ready');
+      })
+      .catch(() => {
+        if (!active) return;
+        setBibleError('Текст Библии не загрузился. Можно ввести стих вручную.');
+        setBibleLoadState('error');
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [showForm]);
 
   const statusesByVerseId = useMemo(() => {
     return new Map(verseStatuses.map((status) => [status.verseId, status]));
@@ -116,12 +180,81 @@ export function CollectionPage() {
     };
   }, [allVerses, verseStats]);
 
-  const bookOptions = useMemo(() => getBookOptions(allVerses), [allVerses]);
+  const bibleBookNames = useMemo(() => {
+    return bibleManifest?.books.map((book) => book.name) ?? [];
+  }, [bibleManifest]);
+
+  const bookOptions = useMemo(() => {
+    if (bibleLoadState !== 'error') return bibleBookNames;
+    return getBookOptions(allVerses);
+  }, [allVerses, bibleBookNames, bibleLoadState]);
+
   const filteredBookOptions = useMemo(() => {
     const query = form.book.trim().toLowerCase();
     if (!query) return bookOptions;
     return bookOptions.filter((book) => book.toLowerCase().includes(query));
   }, [bookOptions, form.book]);
+
+  const selectedBibleBookMeta = useMemo(
+    () => findBibleBookMetadata(bibleManifest, form.book),
+    [bibleManifest, form.book],
+  );
+  const selectedChapterNumber = normalizeReferenceValue(form.chapter);
+  const selectedVerseNumber = normalizeReferenceValue(form.verse);
+  const selectedChapterVerseCount = useMemo(() => {
+    if (!selectedBibleBookMeta || selectedChapterNumber <= 0) return 0;
+    return selectedBibleBookMeta.chapters[selectedChapterNumber - 1] ?? 0;
+  }, [selectedBibleBookMeta, selectedChapterNumber]);
+  const availableChapterNumbers = useMemo(() => {
+    return selectedBibleBookMeta?.chapters.map((_, index) => index + 1) ?? [];
+  }, [selectedBibleBookMeta]);
+  const availableVerseNumbers = useMemo(() => {
+    return Array.from({ length: selectedChapterVerseCount }, (_, index) => index + 1);
+  }, [selectedChapterVerseCount]);
+  const bibleVerseText = useMemo(
+    () =>
+      getBibleVerseText(
+        selectedBibleBook,
+        selectedChapterNumber,
+        selectedVerseNumber,
+      ),
+    [selectedBibleBook, selectedChapterNumber, selectedVerseNumber],
+  );
+
+  useEffect(() => {
+    if (!selectedBibleBookMeta) {
+      setSelectedBibleBook(null);
+      setBookLoadState('idle');
+      return;
+    }
+
+    let active = true;
+    setSelectedBibleBook(null);
+    setBookLoadState('loading');
+
+    loadBibleBook(selectedBibleBookMeta)
+      .then((loadedBook) => {
+        if (!active) return;
+        setSelectedBibleBook(loadedBook);
+        setBookLoadState('ready');
+      })
+      .catch(() => {
+        if (!active) return;
+        setBookLoadState('error');
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [selectedBibleBookMeta]);
+
+  useEffect(() => {
+    if (!bibleVerseText) return;
+    setError(null);
+    setForm((prev) =>
+      prev.text === bibleVerseText ? prev : { ...prev, text: bibleVerseText },
+    );
+  }, [bibleVerseText]);
 
   function handleRepeat(verseId: string) {
     navigate(`/modes?verseId=${verseId}`);
@@ -147,8 +280,30 @@ export function CollectionPage() {
   }
 
   function handleBookSelect(book: string) {
-    updateField('book', book);
+    setForm((prev) => {
+      const bibleBook = findBibleBookMetadata(bibleManifest, book);
+      if (!bibleBook) return { ...prev, book };
+
+      const chapter = resolveChapterValue(bibleBook, prev.chapter);
+      const verseCount = bibleBook.chapters[Number.parseInt(chapter, 10) - 1];
+      const verse = resolveVerseValue(verseCount, prev.verse);
+
+      return { ...prev, book, chapter, verse };
+    });
     setShowBookDropdown(false);
+  }
+
+  function handleChapterChange(chapter: string) {
+    setForm((prev) => {
+      if (!selectedBibleBookMeta) return { ...prev, chapter };
+
+      const verseCount = selectedBibleBookMeta.chapters[Number.parseInt(chapter, 10) - 1];
+      return {
+        ...prev,
+        chapter,
+        verse: resolveVerseValue(verseCount, prev.verse),
+      };
+    });
   }
 
   async function handleSaveVerse() {
@@ -316,25 +471,77 @@ export function CollectionPage() {
                   </select>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                  <input
-                    type="number"
-                    min={1}
-                    aria-label="Глава"
-                    value={form.chapter}
-                    onChange={(e) => updateField('chapter', e.target.value)}
-                    placeholder="Глава"
-                    className="rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  />
-                  <input
-                    type="number"
-                    min={1}
-                    aria-label="Стих"
-                    value={form.verse}
-                    onChange={(e) => updateField('verse', e.target.value)}
-                    placeholder="Стих"
-                    className="rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  />
+                  {selectedBibleBookMeta ? (
+                    <select
+                      aria-label="Глава"
+                      value={form.chapter}
+                      onChange={(e) => handleChapterChange(e.target.value)}
+                      className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    >
+                      <option value="" disabled>
+                        Глава
+                      </option>
+                      {availableChapterNumbers.map((chapter) => (
+                        <option key={chapter} value={chapter}>
+                          {chapter}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="number"
+                      min={1}
+                      aria-label="Глава"
+                      value={form.chapter}
+                      onChange={(e) => handleChapterChange(e.target.value)}
+                      placeholder="Глава"
+                      className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    />
+                  )}
+                  {selectedBibleBookMeta ? (
+                    <select
+                      aria-label="Стих"
+                      value={form.verse}
+                      onChange={(e) => updateField('verse', e.target.value)}
+                      disabled={selectedChapterVerseCount === 0}
+                      className="rounded-md border border-input bg-background px-3 py-2 text-sm disabled:opacity-60"
+                    >
+                      <option value="" disabled>
+                        Стих
+                      </option>
+                      {availableVerseNumbers.map((verse) => (
+                        <option key={verse} value={verse}>
+                          {verse}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="number"
+                      min={1}
+                      aria-label="Стих"
+                      value={form.verse}
+                      onChange={(e) => updateField('verse', e.target.value)}
+                      placeholder="Стих"
+                      className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    />
+                  )}
                 </div>
+                {(bibleLoadState === 'loading' ||
+                  bookLoadState === 'loading' ||
+                  bookLoadState === 'error' ||
+                  bibleError ||
+                  bibleVerseText) && (
+                  <p className="text-xs text-muted-foreground">
+                    {bibleLoadState === 'loading' && 'Загружаем список книг Библии...'}
+                    {bookLoadState === 'loading' && 'Загружаем выбранную книгу...'}
+                    {bookLoadState === 'error' && 'Выбранная книга не загрузилась.'}
+                    {bibleError}
+                    {bibleVerseText && bibleManifest
+                      ? `Текст подставлен из перевода «${bibleManifest.translation}».`
+                      : null}
+                  </p>
+                )}
                 <textarea
                   aria-label="Текст стиха"
                   value={form.text}

@@ -2,6 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { resetBibleTextCache } from '../services/bibleText';
 import * as db from '../services/db';
 import { AppProvider } from '../store/AppContext';
 import { resetAppDb } from '../test/testDb';
@@ -62,9 +63,13 @@ function renderCollectionPage(initialEntry = '/collection') {
 describe('CollectionPage (integration)', () => {
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    resetBibleTextCache();
   });
 
   beforeEach(async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 404 })));
+    resetBibleTextCache();
     await resetAppDb();
     sessionStorage.clear();
   });
@@ -172,6 +177,162 @@ describe('CollectionPage (integration)', () => {
     expect(await screen.findByText(newVerse.text)).toBeInTheDocument();
     expect(screen.getByText(`${newVerse.book} ${newVerse.chapter}:${newVerse.verse}`)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Добавить стих' })).toBeInTheDocument();
+  });
+
+  it('auto-fills verse text from the loaded Bible source', async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+
+      if (url.endsWith('/data/nwt-ru/manifest.json')) {
+        return new Response(
+          JSON.stringify({
+            translation: 'Тестовый перевод',
+            language: 'ru',
+            source: 'test.epub',
+            books: [
+              {
+                name: 'Бытие',
+                file: 'books/01.json',
+                chapters: [2],
+              },
+            ],
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        );
+      }
+
+      if (url.endsWith('/data/nwt-ru/books/01.json')) {
+        return new Response(
+          JSON.stringify({
+            name: 'Бытие',
+            chapters: [['В начале Бог создал небо и землю.', 'Земля была безлика и пуста.']],
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        );
+      }
+
+      return new Response('', { status: 404 });
+    });
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderCollectionPage();
+
+    expect(await screen.findByRole('heading', { name: 'Коллекция стихов' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Добавить стих' }));
+    await user.type(screen.getByRole('textbox', { name: 'Книга' }), 'Бытие');
+    await user.selectOptions(await screen.findByRole('combobox', { name: 'Глава' }), '1');
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Стих' }), '2');
+
+    expect(await screen.findByDisplayValue('Земля была безлика и пуста.')).toBeInTheDocument();
+    expect(screen.getByText('Текст подставлен из перевода «Тестовый перевод».')).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/data/nwt-ru/manifest.json'));
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/data/nwt-ru/books/01.json'));
+  });
+
+  it('loads only the selected Bible book after opening the form', async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+
+      if (url.endsWith('/data/nwt-ru/manifest.json')) {
+        return new Response(
+          JSON.stringify({
+            translation: 'Тестовый перевод',
+            language: 'ru',
+            source: 'test.epub',
+            books: [
+              {
+                name: 'Бытие',
+                file: 'books/01.json',
+                chapters: [2],
+              },
+              {
+                name: 'Иоанна',
+                file: 'books/43.json',
+                chapters: [51, 25, 36],
+              },
+            ],
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        );
+      }
+
+      if (url.endsWith('/data/nwt-ru/books/43.json')) {
+        return new Response(
+          JSON.stringify({
+            name: 'Иоанна',
+            chapters: [
+              [],
+              [],
+              Array.from({ length: 16 }, (_, index) =>
+                index === 15 ? 'Тестовый текст Иоанна 3:16.' : `Стих ${index + 1}`,
+              ),
+            ],
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        );
+      }
+
+      return new Response('', { status: 404 });
+    });
+
+    vi.stubGlobal('fetch', fetchMock);
+    renderCollectionPage();
+
+    expect(await screen.findByRole('heading', { name: 'Коллекция стихов' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Добавить стих' }));
+    await user.type(screen.getByRole('textbox', { name: 'Книга' }), 'Иоанна');
+    await user.selectOptions(await screen.findByRole('combobox', { name: 'Глава' }), '1');
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Глава' }), '3');
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Стих' }), '16');
+
+    expect(await screen.findByDisplayValue('Тестовый текст Иоанна 3:16.')).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/data/nwt-ru/manifest.json'));
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/data/nwt-ru/books/43.json'));
+    expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining('/data/nwt-ru/books/01.json'));
+  });
+
+  it('uses only manifest books in the Bible book dropdown', async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string | URL | Request) => {
+        const url = String(input);
+
+        if (url.endsWith('/data/nwt-ru/manifest.json')) {
+          return new Response(
+            JSON.stringify({
+              translation: 'Тестовый перевод',
+              language: 'ru',
+              source: 'test.epub',
+              books: [
+                { name: 'Бытие', file: 'books/01.json', chapters: [2] },
+                { name: 'Откровение', file: 'books/66.json', chapters: [20] },
+              ],
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          );
+        }
+
+        return new Response('', { status: 404 });
+      }),
+    );
+
+    renderCollectionPage();
+
+    expect(await screen.findByRole('heading', { name: 'Коллекция стихов' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Добавить стих' }));
+    await user.click(screen.getByRole('textbox', { name: 'Книга' }));
+
+    expect(await screen.findByText('Откровение')).toBeInTheDocument();
+    expect(screen.getByText('Бытие')).toBeInTheDocument();
+    expect(screen.queryByText('Есфирь')).not.toBeInTheDocument();
+    expect(screen.queryByText('Иоанна')).not.toBeInTheDocument();
   });
 
   it('opens the add verse form and hint from query params', async () => {
