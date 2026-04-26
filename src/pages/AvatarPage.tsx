@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Check, Lock, Maximize2, X } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { AvatarPreview } from '../components/Avatar';
 import { BottomNav } from '../components/BottomNav';
@@ -99,37 +100,39 @@ export function AvatarPage() {
 
       <BottomNav />
 
-      {previewOpen && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label={currentAvatar.name}
-          className="fixed inset-0 z-[60] flex flex-col bg-background/95 px-4 pb-4 pt-[calc(env(safe-area-inset-top)+1rem)] backdrop-blur-sm"
-        >
-          <div className="mx-auto flex w-full max-w-4xl items-center justify-between gap-3">
-            <div>
-              <p className="text-lg font-semibold text-foreground">{currentAvatar.name}</p>
-              <p className="text-sm text-muted-foreground">{currentAvatar.description}</p>
+      {previewOpen &&
+        createPortal(
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={currentAvatar.name}
+            className="fixed inset-0 z-[110] flex flex-col bg-background/95 px-4 pb-4 pt-[calc(env(safe-area-inset-top)+1rem)] backdrop-blur-sm"
+          >
+            <div className="mx-auto flex w-full max-w-4xl items-center justify-between gap-3">
+              <div>
+                <p className="text-lg font-semibold text-foreground">{currentAvatar.name}</p>
+                <p className="text-sm text-muted-foreground">{currentAvatar.description}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewOpen(false)}
+                aria-label="Закрыть"
+                className="rounded-full bg-card p-3 text-foreground shadow-sm ring-offset-background transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                <X className="h-5 w-5" />
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => setPreviewOpen(false)}
-              aria-label="Закрыть"
-              className="rounded-full bg-card p-3 text-foreground shadow-sm ring-offset-background transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-          <div className="flex min-h-0 flex-1 items-center justify-center py-4">
-            <img
-              src={currentAvatar.image}
-              alt={currentAvatar.name}
-              className="max-h-full max-w-full object-contain drop-shadow-2xl"
-              draggable={false}
-            />
-          </div>
-        </div>
-      )}
+            <div className="flex min-h-0 flex-1 items-center justify-center py-4">
+              <img
+                src={currentAvatar.image}
+                alt={currentAvatar.name}
+                className="max-h-full max-w-full object-contain drop-shadow-2xl"
+                draggable={false}
+              />
+            </div>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
